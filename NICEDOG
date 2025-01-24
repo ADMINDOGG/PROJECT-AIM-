@@ -499,30 +499,3 @@ UserInputService.InputChanged:Connect(function(input)
         update(input)
     end
 end)
-
-LocalPlayer.CharacterAdded:Connect(function(character)
-    espEnabled = false
-    espButton.Text = "ESP: OFF"
-    TweenService:Create(espButton, TweenInfo.new(0.3), {
-        BackgroundColor3 = Color3.fromRGB(35, 35, 45)
-    }):Play()
-    
-    aimbotEnabled = false
-    aimbotButton.Text = "Aimbot: OFF"
-    TweenService:Create(aimbotButton, TweenInfo.new(0.3), {
-        BackgroundColor3 = Color3.fromRGB(35, 35, 45)
-    }):Play()
-    FOVCircle.Visible = false
-    
-    showHealth = true
-    healthToggleButton.Text = "Health: ON"
-    TweenService:Create(healthToggleButton, TweenInfo.new(0.3), {
-        BackgroundColor3 = Color3.fromRGB(40, 180, 120)
-    }):Play()
-    
-    whichListEnabled = false
-    whichListButton.Text = "Which List: OFF"
-    TweenService:Create(whichListButton, TweenInfo.new(0.3), {
-        BackgroundColor3 = Color3.fromRGB(35, 35, 45)
-    }):Play()
-end)
