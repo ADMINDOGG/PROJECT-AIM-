@@ -10,12 +10,24 @@ local showHealth = true
 local whichListEnabled = false
 local excludedPlayers = {}
 
+-- ระบบสี outline
+local highlightColor = Color3.fromRGB(255, 255, 255)
+local colors = {
+    {name = "White", color = Color3.fromRGB(255, 255, 255)},
+    {name = "Red", color = Color3.fromRGB(255, 0, 0)},
+    {name = "Green", color = Color3.fromRGB(0, 255, 0)},
+    {name = "Blue", color = Color3.fromRGB(0, 0, 255)},
+    {name = "Yellow", color = Color3.fromRGB(255, 255, 0)},
+    {name = "Purple", color = Color3.fromRGB(255, 0, 255)}
+}
+local currentColorIndex = 1
+
 local gui = Instance.new("ScreenGui")
 gui.ResetOnSpawn = false
 gui.Parent = game.CoreGui
 
 local frame = Instance.new("Frame")
-frame.Size = UDim2.new(0, 220, 0, 325)
+frame.Size = UDim2.new(0, 220, 0, 370)
 frame.Position = UDim2.new(0.8, 0, 0.1, 0)
 frame.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
 frame.BorderSizePixel = 0
@@ -44,7 +56,6 @@ title.TextSize = 18
 title.Font = Enum.Font.GothamBold
 title.Parent = frame
 
--- Functions for creating UI elements
 local function createButton(text, position)
     local button = Instance.new("TextButton")
     button.Size = UDim2.new(0.9, 0, 0, 40)
@@ -83,13 +94,14 @@ local function createButton(text, position)
 end
 
 local function createWhichList()
-    local listFrame = Instance.new("Frame")
-    listFrame.Size = UDim2.new(0, 200, 0, 300)
-    listFrame.Position = UDim2.new(0, -220, 0, 0)
-    listFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
-    listFrame.BorderSizePixel = 0
-    listFrame.Visible = false
-    listFrame.Parent = frame
+   local listFrame = Instance.new("Frame") 
+   listFrame.Size = UDim2.new(0, 200, 0, 300)
+   listFrame.Position = UDim2.new(1, 10, 0, 0)
+   listFrame.AnchorPoint = Vector2.new(1, 0)
+   listFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
+   listFrame.BorderSizePixel = 0
+   listFrame.Visible = false
+   listFrame.Parent = frame
 
     local UICorner = Instance.new("UICorner")
     UICorner.CornerRadius = UDim.new(0, 10)
@@ -232,6 +244,7 @@ local function createWhichList()
 
     return listFrame, scrollFrame
 end
+
 local function toggleGUI()
     guiVisible = not guiVisible
     gui.Enabled = guiVisible
@@ -282,6 +295,7 @@ local fovBox = createTextBox("FOV Size", UDim2.new(0.5, 0, 0, 190))
 local smoothBox = createTextBox("Smoothness", UDim2.new(0.5, 0, 0, 235))
 local healthToggleButton = createButton("Health: ON", UDim2.new(0.5, 0, 0, 280))
 local whichListButton = createButton("Which List: OFF", UDim2.new(0.5, 0, 0, 325))
+local outlineColorButton = createButton("Outline: White", UDim2.new(0.5, 0, 0, 370))
 
 local function addClickEffect(button)
     button.MouseButton1Down:Connect(function()
@@ -300,6 +314,7 @@ end
 addClickEffect(espButton)
 addClickEffect(aimbotButton)
 addClickEffect(whichListButton)
+addClickEffect(outlineColorButton)
 
 distanceBox.Text = "100"
 fovBox.Text = "100"
@@ -307,6 +322,8 @@ smoothBox.Text = "0.2"
 
 local highlight = Instance.new("Highlight")
 highlight.Name = "Highlight"
+highlight.FillColor = Color3.fromRGB(255, 255, 255)
+highlight.OutlineColor = highlightColor
 local espEnabled = false
 local aimbotEnabled = false
 local target = nil
@@ -355,28 +372,25 @@ end
 
 local function getClosestPlayer()
     local closestPlayer = nil
-    local shortestFOVDistance = math.huge -- เปลี่ยนจากระยะทางจริงเป็นระยะทางบนหน้าจอ
+    local shortestDistance = math.huge
     
     for _, player in pairs(Players:GetPlayers()) do
         if player ~= LocalPlayer and not excludedPlayers[player] and 
            player.Character and 
-           player.Character:FindFirstChild("HumanoidRootPart") and
+           player.Character:FindFirstChild("Head") and
            player.Character:FindFirstChild("Humanoid") and
            player.Character.Humanoid.Health > 0 then
             
             local screenPoint = Camera:WorldToScreenPoint(player.Character.Head.Position)
             local screenCenter = Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y/2)
             
-            if screenPoint.Z > 0 then -- เช็คว่าอยู่หน้ากล้อง
+            if screenPoint.Z > 0 then
                 local screenPosition = Vector2.new(screenPoint.X, screenPoint.Y)
-                local FOVDistance = (screenPosition - screenCenter).Magnitude
+                local distanceFromCenter = (screenPosition - screenCenter).Magnitude
                 
-                if FOVDistance <= FOVSize then
-                    -- เลือกผู้เล่นที่อยู่ใกล้จุดกึ่งกลาง FOV มากที่สุด
-                    if FOVDistance < shortestFOVDistance then
-                        closestPlayer = player
-                        shortestFOVDistance = FOVDistance
-                    end
+                if distanceFromCenter <= FOVSize and distanceFromCenter < shortestDistance then
+                    closestPlayer = player
+                    shortestDistance = distanceFromCenter
                 end
             end
         end
@@ -433,6 +447,9 @@ local function addPlayerHighlight(player)
     if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
         local highlightClone = highlight:Clone()
         highlightClone.Adornee = player.Character
+        highlightClone.FillTransparency = 1
+        highlightClone.OutlineColor = highlightColor
+        highlightClone.OutlineTransparency = 0
         highlightClone.Parent = player.Character.HumanoidRootPart
         highlightClone.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
     end
@@ -550,6 +567,24 @@ whichListButton.MouseButton1Click:Connect(function()
     whichListFrame.Visible = whichListEnabled
 end)
 
+outlineColorButton.MouseButton1Click:Connect(function()
+    currentColorIndex = (currentColorIndex % #colors) + 1
+    highlightColor = colors[currentColorIndex].color
+    outlineColorButton.Text = "Outline: " .. colors[currentColorIndex].name
+    
+    if espEnabled then
+        for _, player in pairs(Players:GetPlayers()) do
+            if player ~= LocalPlayer and player.Character and
+               player.Character:FindFirstChild("HumanoidRootPart") then
+                local highlightInst = player.Character.HumanoidRootPart:FindFirstChild("Highlight")
+                if highlightInst then
+                    highlightInst.OutlineColor = highlightColor
+                end
+            end
+        end
+    end
+end)
+
 RunService.RenderStepped:Connect(function()
     FOVCircle.Position = Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y/2)
     FOVCircle.Radius = FOVSize
@@ -562,7 +597,8 @@ RunService.RenderStepped:Connect(function()
             local newCFrame = CFrame.new(currentCFrame.Position, targetPos)
             Camera.CFrame = currentCFrame:Lerp(newCFrame, smoothness)
         end
-    elsetarget = nil
+    else
+        target = nil
     end
 end)
 
