@@ -640,3 +640,158 @@ UserInputService.InputChanged:Connect(function(input)
         update(input)
     end
 end)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+------
+
+
+local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+local plr = Players.LocalPlayer
+
+-- UI Helper Functions
+local function makeUICorner(parent, radius)
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, radius or 8)
+    corner.Parent = parent
+    return corner
+end
+
+local function makeUIGradient(parent, color1, color2)
+    local gradient = Instance.new("UIGradient")
+    gradient.Color = ColorSequence.new({
+        ColorSequenceKeypoint.new(0, color1),
+        ColorSequenceKeypoint.new(1, color2)
+    })
+    gradient.Parent = parent
+    return gradient
+end
+
+-- Create GUI
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "SpectateGui"
+screenGui.Parent = plr.PlayerGui
+
+-- Create Frame
+local mainFrame = Instance.new("Frame")
+mainFrame.Size = UDim2.new(0, 200, 0, 300)
+mainFrame.Position = UDim2.new(0.85, -100, 0.3, 0)
+mainFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+mainFrame.BorderSizePixel = 0
+mainFrame.Parent = screenGui
+makeUICorner(mainFrame, 12)
+makeUIGradient(mainFrame,
+    Color3.fromRGB(40, 40, 40),
+    Color3.fromRGB(25, 25, 25)
+)
+
+-- Title
+local titleLabel = Instance.new("TextLabel")
+titleLabel.Parent = mainFrame
+titleLabel.Size = UDim2.new(1, 0, 0.15, 0)
+titleLabel.Text = "👁️ Spectate"
+titleLabel.TextSize = 24
+titleLabel.Font = Enum.Font.GothamBold
+titleLabel.TextColor3 = Color3.fromRGB(255, 255, 0)
+titleLabel.BackgroundTransparency = 1
+
+-- Scrolling Frame for Player List
+local scrollFrame = Instance.new("ScrollingFrame")
+scrollFrame.Size = UDim2.new(0.9, 0, 0.7, 0)
+scrollFrame.Position = UDim2.new(0.05, 0, 0.2, 0)
+scrollFrame.BackgroundTransparency = 1
+scrollFrame.ScrollBarThickness = 4
+scrollFrame.Parent = mainFrame
+
+-- Stop Spectating Button
+local stopButton = Instance.new("TextButton")
+stopButton.Size = UDim2.new(0.8, 0, 0.1, 0)
+stopButton.Position = UDim2.new(0.1, 0, 0.88, 0)
+stopButton.Text = "Stop Spectating"
+stopButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+stopButton.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
+stopButton.Font = Enum.Font.GothamBold
+stopButton.TextSize = 14
+stopButton.Parent = mainFrame
+stopButton.Visible = false
+makeUICorner(stopButton, 8)
+
+-- Functions
+local function createPlayerButton(player)
+    local button = Instance.new("TextButton")
+    button.Size = UDim2.new(0.9, 0, 0, 30)
+    button.Position = UDim2.new(0.05, 0, 0, (#scrollFrame:GetChildren() * 35))
+    button.Text = player.Name
+    button.TextColor3 = Color3.fromRGB(255, 255, 255)
+    button.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+    button.Font = Enum.Font.GothamSemibold
+    button.TextSize = 14
+    button.Parent = scrollFrame
+    makeUICorner(button, 6)
+    
+    button.MouseButton1Click:Connect(function()
+        local character = player.Character
+        if character and character:FindFirstChild("Humanoid") then
+            workspace.CurrentCamera.CameraSubject = character
+            stopButton.Visible = true
+            return "Spectating " .. character.Name
+        end
+        return "Invalid player"
+    end)
+end
+
+-- Stop spectating function
+local function stopSpectating()
+    if plr.Character and plr.Character:FindFirstChild("Humanoid") then
+        workspace.CurrentCamera.CameraSubject = plr.Character
+        stopButton.Visible = false
+    end
+end
+
+stopButton.MouseButton1Click:Connect(stopSpectating)
+
+-- Update player list
+local function updatePlayerList()
+    for _, child in ipairs(scrollFrame:GetChildren()) do
+        child:Destroy()
+    end
+    
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player ~= plr then
+            createPlayerButton(player)
+        end
+    end
+end
+
+-- Connect events
+Players.PlayerAdded:Connect(function()
+    updatePlayerList()
+end)
+
+Players.PlayerRemoving:Connect(function()
+    updatePlayerList()
+end)
+
+-- Add keyboard shortcut (P key to toggle GUI)
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if not gameProcessed and input.KeyCode == Enum.KeyCode.P then
+        screenGui.Enabled = not screenGui.Enabled
+    elseif not gameProcessed and input.KeyCode == Enum.KeyCode.X then
+        stopSpectating()
+    end
+end)
+
+-- Initialize
+updatePlayerList()
