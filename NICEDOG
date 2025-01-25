@@ -795,3 +795,68 @@ end)
 
 -- Initialize
 updatePlayerList()
+
+
+
+
+--------------------
+
+
+
+local TextChatService = game:GetService("TextChatService")
+local UserInputService = game:GetService("UserInputService")
+local plr = game:GetService("Players").LocalPlayer
+
+-- Helper Functions
+local function makeUICorner(parent, radius)
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, radius or 8)
+    corner.Parent = parent
+    return corner
+end
+
+-- Create GUI
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "ChatToggleGui"
+screenGui.Parent = plr.PlayerGui
+
+-- Create Toggle Button
+local toggleButton = Instance.new("TextButton")
+toggleButton.Size = UDim2.new(0, 120, 0, 40)
+toggleButton.Position = UDim2.new(0.85, -60, 0.8, 0)
+toggleButton.Text = "💬 Chat: ON"
+toggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+toggleButton.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
+toggleButton.Font = Enum.Font.GothamBold
+toggleButton.TextSize = 16
+toggleButton.Parent = screenGui
+makeUICorner(toggleButton)
+
+-- Variables
+local chatWindowConfig = TextChatService:FindFirstChild("ChatWindowConfiguration")
+local isChatEnabled = true
+
+-- Toggle Function
+local function toggleChat()
+    isChatEnabled = not isChatEnabled
+
+    if chatWindowConfig then
+        chatWindowConfig.Enabled = isChatEnabled
+    end
+
+    -- Update button appearance
+    toggleButton.Text = "💬 Chat: " .. (isChatEnabled and "ON" or "OFF")
+    toggleButton.BackgroundColor3 = isChatEnabled and Color3.fromRGB(0, 255, 0) or Color3.fromRGB(255, 0, 0)
+
+    return isChatEnabled and "Chat logs ENABLED!" or "Chat logs DISABLED!"
+end
+
+-- Connect button
+toggleButton.MouseButton1Click:Connect(toggleChat)
+
+-- Add keyboard shortcut (T key)
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if not gameProcessed and input.KeyCode == Enum.KeyCode.T then
+        toggleChat()
+    end
+end)
