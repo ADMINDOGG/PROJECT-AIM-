@@ -9,6 +9,7 @@ local guiVisible = true
 local showHealth = true
 local whichListEnabled = false
 local excludedPlayers = {}
+local targetBody = false
 
 -- ระบบสี outline
 local highlightColor = Color3.fromRGB(255, 255, 255)
@@ -27,7 +28,7 @@ gui.ResetOnSpawn = false
 gui.Parent = game.CoreGui
 
 local frame = Instance.new("Frame")
-frame.Size = UDim2.new(0, 220, 0, 370)
+frame.Size = UDim2.new(0, 220, 0, 415)
 frame.Position = UDim2.new(0.8, 0, 0.1, 0)
 frame.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
 frame.BorderSizePixel = 0
@@ -245,11 +246,6 @@ local function createWhichList()
     return listFrame, scrollFrame
 end
 
-local function toggleGUI()
-    guiVisible = not guiVisible
-    gui.Enabled = guiVisible
-end
-
 local function createTextBox(placeholder, position)
     local textbox = Instance.new("TextBox")
     textbox.Size = UDim2.new(0.9, 0, 0, 35)
@@ -288,6 +284,7 @@ local function createTextBox(placeholder, position)
     return textbox
 end
 
+-- สร้างปุ่มทั้งหมด
 local espButton = createButton("ESP: OFF", UDim2.new(0.5, 0, 0, 50))
 local distanceBox = createTextBox("View Distance", UDim2.new(0.5, 0, 0, 100))
 local aimbotButton = createButton("Aimbot: OFF", UDim2.new(0.5, 0, 0, 145))
@@ -296,6 +293,7 @@ local smoothBox = createTextBox("Smoothness", UDim2.new(0.5, 0, 0, 235))
 local healthToggleButton = createButton("Health: ON", UDim2.new(0.5, 0, 0, 280))
 local whichListButton = createButton("Which List: OFF", UDim2.new(0.5, 0, 0, 325))
 local outlineColorButton = createButton("Outline: White", UDim2.new(0.5, 0, 0, 370))
+local targetPartButton = createButton("Target: Head", UDim2.new(0.5, 0, 0, 415))
 
 local function addClickEffect(button)
     button.MouseButton1Down:Connect(function()
@@ -315,6 +313,7 @@ addClickEffect(espButton)
 addClickEffect(aimbotButton)
 addClickEffect(whichListButton)
 addClickEffect(outlineColorButton)
+addClickEffect(targetPartButton)
 
 distanceBox.Text = "100"
 fovBox.Text = "100"
@@ -585,17 +584,28 @@ outlineColorButton.MouseButton1Click:Connect(function()
     end
 end)
 
+targetPartButton.MouseButton1Click:Connect(function()
+    targetBody = not targetBody
+    targetPartButton.Text = targetBody and "Target: Body" or "Target: Head"
+    TweenService:Create(targetPartButton, TweenInfo.new(0.3), {
+        BackgroundColor3 = targetBody and Color3.fromRGB(40, 180, 120) or Color3.fromRGB(35, 35, 45)
+    }):Play()
+end)
+
 RunService.RenderStepped:Connect(function()
     FOVCircle.Position = Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y/2)
     FOVCircle.Radius = FOVSize
     
     if aimbotEnabled and (UserInputService:IsKeyDown(aimKey) or UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton2)) then
         target = getClosestPlayer()
-        if target and target.Character and target.Character:FindFirstChild("Head") then
-            local targetPos = target.Character.Head.Position
-            local currentCFrame = Camera.CFrame
-            local newCFrame = CFrame.new(currentCFrame.Position, targetPos)
-            Camera.CFrame = currentCFrame:Lerp(newCFrame, smoothness)
+        if target and target.Character then
+            local targetPart = targetBody and target.Character:FindFirstChild("HumanoidRootPart") or target.Character:FindFirstChild("Head")
+            if targetPart then
+                local targetPos = targetPart.Position
+                local currentCFrame = Camera.CFrame
+                local newCFrame = CFrame.new(currentCFrame.Position, targetPos)
+                Camera.CFrame = currentCFrame:Lerp(newCFrame, smoothness)
+            end
         end
     else
         target = nil
@@ -640,7 +650,6 @@ UserInputService.InputChanged:Connect(function(input)
         update(input)
     end
 end)
-
 
 
 
