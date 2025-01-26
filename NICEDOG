@@ -10,6 +10,7 @@ local showHealth = true
 local whichListEnabled = false
 local excludedPlayers = {}
 local targetBody = false
+local wallCheckEnabled = false
 
 local highlightColor = Color3.fromRGB(255, 255, 255)
 local colors = {
@@ -27,7 +28,7 @@ gui.ResetOnSpawn = false
 gui.Parent = game.CoreGui
 
 local frame = Instance.new("Frame")
-frame.Size = UDim2.new(0, 220, 0, 465)
+frame.Size = UDim2.new(0, 220, 0, 510)
 frame.Position = UDim2.new(0.8, 0, 0.1, 0)
 frame.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
 frame.BorderSizePixel = 0
@@ -292,6 +293,7 @@ local healthToggleButton = createButton("Health: ON", UDim2.new(0.5, 0, 0, 280))
 local whichListButton = createButton("Which List: OFF", UDim2.new(0.5, 0, 0, 325))
 local outlineColorButton = createButton("Outline: White", UDim2.new(0.5, 0, 0, 370))
 local targetPartButton = createButton("Target: Head", UDim2.new(0.5, 0, 0, 415))
+local wallCheckButton = createButton("Wall Check: OFF", UDim2.new(0.5, 0, 0, 460))
 
 local function addClickEffect(button)
     button.MouseButton1Down:Connect(function()
@@ -312,6 +314,7 @@ addClickEffect(aimbotButton)
 addClickEffect(whichListButton)
 addClickEffect(outlineColorButton)
 addClickEffect(targetPartButton)
+addClickEffect(wallCheckButton)
 
 distanceBox.Text = "100"
 fovBox.Text = "100"
@@ -334,6 +337,17 @@ FOVCircle.Color = Color3.fromRGB(255, 255, 255)
 FOVCircle.Transparency = 1
 FOVCircle.Visible = false
 FOVCircle.Filled = false
+
+local function canSeeTarget(target)
+    local rayOrigin = Camera.CFrame.Position
+    local rayDirection = (target.Position - rayOrigin).Unit
+    local raycastParams = RaycastParams.new()
+    raycastParams.FilterDescendantsInstances = {LocalPlayer.Character, target.Parent}
+    raycastParams.FilterType = Enum.RaycastFilterType.Blacklist
+    
+    local raycastResult = workspace:Raycast(rayOrigin, rayDirection * (target.Position - rayOrigin).Magnitude, raycastParams)
+    return raycastResult == nil
+end
 
 distanceBox:GetPropertyChangedSignal("Text"):Connect(function()
     local newText = distanceBox.Text:gsub("[^%d]", "")
@@ -456,12 +470,12 @@ local whichListFrame = createWhichList()
 
 espButton.MouseButton1Click:Connect(function()
     espEnabled = not espEnabled
+    espButton.Text = espEnabled and "ESP: ON" or "ESP: OFF"
+    TweenService:Create(espButton, TweenInfo.new(0.3), {
+        BackgroundColor3 = espEnabled and Color3.fromRGB(40, 180, 120) or Color3.fromRGB(35, 35, 45)
+    }):Play()
+    
     if espEnabled then
-        espButton.Text = "ESP: ON"
-        TweenService:Create(espButton, TweenInfo.new(0.3), {
-            BackgroundColor3 = Color3.fromRGB(40, 180, 120)
-        }):Play()
-        
         for _, player in pairs(Players:GetPlayers()) do
             if player ~= LocalPlayer and isInRange(player.Character) then
                 addPlayerHighlight(player)
@@ -469,11 +483,6 @@ espButton.MouseButton1Click:Connect(function()
             end
         end
     else
-        espButton.Text = "ESP: OFF"
-        TweenService:Create(espButton, TweenInfo.new(0.3), {
-            BackgroundColor3 = Color3.fromRGB(35, 35, 45)
-        }):Play()
-        
         for _, player in pairs(Players:GetPlayers()) do
             if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
                 local highlight = player.Character.HumanoidRootPart:FindFirstChild("Highlight")
@@ -539,20 +548,11 @@ end)
 
 aimbotButton.MouseButton1Click:Connect(function()
     aimbotEnabled = not aimbotEnabled
-    if aimbotEnabled then
-        aimbotButton.Text = "Aimbot: ON"
-        TweenService:Create(aimbotButton, TweenInfo.new(0.3), {
-            BackgroundColor3 = Color3.fromRGB(40, 180, 120)
-        }):Play()
-        FOVCircle.Visible = true
-    else
-        aimbotButton.Text = "Aimbot: OFF"
-        TweenService:Create(aimbotButton, TweenInfo.new(0.3), {
-            BackgroundColor3 = Color3.fromRGB(35, 35, 45)
-        }):Play()
-        FOVCircle.Visible = false
-        target = nil
-    end
+    aimbotButton.Text = aimbotEnabled and "Aimbot: ON" or "Aimbot: OFF"
+    TweenService:Create(aimbotButton, TweenInfo.new(0.3), {
+        BackgroundColor3 = aimbotEnabled and Color3.fromRGB(40, 180, 120) or Color3.fromRGB(35, 35, 45)
+    }):Play()
+    FOVCircle.Visible = aimbotEnabled
 end)
 
 whichListButton.MouseButton1Click:Connect(function()
@@ -590,6 +590,14 @@ targetPartButton.MouseButton1Click:Connect(function()
     }):Play()
 end)
 
+wallCheckButton.MouseButton1Click:Connect(function()
+    wallCheckEnabled = not wallCheckEnabled
+    wallCheckButton.Text = wallCheckEnabled and "Wall Check: ON" or "Wall Check: OFF"
+    TweenService:Create(wallCheckButton, TweenInfo.new(0.3), {
+        BackgroundColor3 = wallCheckEnabled and Color3.fromRGB(40, 180, 120) or Color3.fromRGB(35, 35, 45)
+    }):Play()
+end)
+
 RunService.RenderStepped:Connect(function()
     FOVCircle.Position = Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y/2)
     FOVCircle.Radius = FOVSize
@@ -598,7 +606,7 @@ RunService.RenderStepped:Connect(function()
         target = getClosestPlayer()
         if target and target.Character then
             local targetPart = targetBody and target.Character:FindFirstChild("HumanoidRootPart") or target.Character:FindFirstChild("Head")
-            if targetPart then
+            if targetPart and (not wallCheckEnabled or canSeeTarget(targetPart)) then
                 local targetPos = targetPart.Position
                 local currentCFrame = Camera.CFrame
                 local newCFrame = CFrame.new(currentCFrame.Position, targetPos)
