@@ -716,7 +716,7 @@ end)
 
 
 
-------
+---------------สะเป็กเต็อ
 
 
 local Players = game:GetService("Players")
@@ -922,3 +922,337 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
         toggleChat()
     end
 end)
+
+
+
+
+--------------------------------------------------------------------------------------------------------------------------FLY
+
+-- Services
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local TweenService = game:GetService("TweenService")
+
+-- Player setup
+local player = Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local playerGui = player:WaitForChild("PlayerGui")
+
+-- Config
+local FLIGHT_SPEED = 5
+local TOGGLE_KEY = Enum.KeyCode.L
+local ASCEND_KEY = Enum.KeyCode.Space
+local DESCEND_KEY = Enum.KeyCode.LeftShift
+local SPEED_INCREMENT = 5
+local MAX_SPEED = 500
+
+-- Variables
+local flying = false
+local camera = workspace.CurrentCamera
+local humanoid, rootPart
+
+-- Create UI
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "FlightGui"
+screenGui.ResetOnSpawn = false
+screenGui.Parent = playerGui
+
+local statusFrame = Instance.new("Frame")
+statusFrame.Size = UDim2.new(0, 220, 0, 120)
+statusFrame.Position = UDim2.new(1, -240, 0, 20)
+statusFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
+statusFrame.BackgroundTransparency = 0.2
+statusFrame.BorderSizePixel = 0
+statusFrame.Parent = screenGui
+
+local corner = Instance.new("UICorner")
+corner.CornerRadius = UDim.new(0, 12)
+corner.Parent = statusFrame
+
+local gradient = Instance.new("UIGradient")
+gradient.Color = ColorSequence.new({
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(30, 30, 40)),
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(20, 20, 30))
+})
+gradient.Parent = statusFrame
+
+local statusText = Instance.new("TextLabel")
+statusText.Size = UDim2.new(1, 0, 0.5, 0)
+statusText.BackgroundTransparency = 1
+statusText.TextColor3 = Color3.fromRGB(255, 100, 100)
+statusText.TextSize = 20
+statusText.Font = Enum.Font.GothamBold
+statusText.Text = "สถานะการบิน: ปิด"
+statusText.Parent = statusFrame
+
+local speedText = Instance.new("TextLabel")
+speedText.Size = UDim2.new(1, 0, 0.5, 0)
+speedText.Position = UDim2.new(0, 0, 0.5, 0)
+speedText.BackgroundTransparency = 1
+speedText.TextColor3 = Color3.fromRGB(255, 255, 255)
+speedText.TextSize = 20
+speedText.Font = Enum.Font.GothamBold
+speedText.Text = "ความเร็ว: " .. FLIGHT_SPEED
+speedText.Parent = statusFrame
+
+-- Controls UI
+local controlsGui = Instance.new("ScreenGui")
+controlsGui.Name = "FlightControls"
+controlsGui.ResetOnSpawn = false
+controlsGui.Parent = playerGui
+
+local controlsFrame = Instance.new("Frame")
+controlsFrame.Size = UDim2.new(0, 280, 0, 320)
+controlsFrame.Position = UDim2.new(0, 20, 0.5, -160)
+controlsFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
+controlsFrame.BackgroundTransparency = 0.2
+controlsFrame.BorderSizePixel = 0
+controlsFrame.Parent = controlsGui
+
+local controlsCorner = Instance.new("UICorner")
+controlsCorner.CornerRadius = UDim.new(0, 12)
+controlsCorner.Parent = controlsFrame
+
+local controlsGradient = Instance.new("UIGradient")
+controlsGradient.Color = ColorSequence.new({
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(30, 30, 40)),
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(20, 20, 30))
+})
+controlsGradient.Parent = controlsFrame
+
+local title = Instance.new("TextLabel")
+title.Size = UDim2.new(1, 0, 0.2, 0)
+title.BackgroundTransparency = 1
+title.TextColor3 = Color3.fromRGB(255, 255, 255)
+title.TextSize = 24
+title.Font = Enum.Font.GothamBold
+title.Text = "✈️ ระบบควบคุมการบิน"
+title.Parent = controlsFrame
+
+local controlsText = Instance.new("TextLabel")
+controlsText.Size = UDim2.new(0.9, 0, 0.6, 0)
+controlsText.Position = UDim2.new(0.05, 0, 0.2, 0)
+controlsText.BackgroundTransparency = 1
+controlsText.TextColor3 = Color3.fromRGB(200, 200, 200)
+controlsText.TextSize = 16
+controlsText.Font = Enum.Font.Gotham
+controlsText.TextXAlignment = Enum.TextXAlignment.Left
+controlsText.Text = [[WASD - เคลื่อนที่
+Space - ขึ้น
+Shift - ลง
+Q/E - ปรับความเร็ว
+L - เปิด/ปิด การบิน]]
+controlsText.Parent = controlsFrame
+
+local toggleButton = Instance.new("TextButton")
+toggleButton.Size = UDim2.new(0.8, 0, 0.15, 0)
+toggleButton.Position = UDim2.new(0.1, 0, 0.8, 0)
+toggleButton.BackgroundColor3 = Color3.fromRGB(0, 150, 255)
+toggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+toggleButton.TextSize = 18
+toggleButton.Font = Enum.Font.GothamBold
+toggleButton.Text = "เปิด/ปิด การบิน"
+toggleButton.Parent = controlsFrame
+
+local buttonCorner = Instance.new("UICorner")
+buttonCorner.CornerRadius = UDim.new(0, 8)
+buttonCorner.Parent = toggleButton
+
+-- Add hide/show button
+local hideButton = Instance.new("TextButton")
+hideButton.Size = UDim2.new(0, 40, 0, 40)
+hideButton.Position = UDim2.new(0, 10, 0.5, 0)
+hideButton.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
+hideButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+hideButton.TextSize = 18
+hideButton.Font = Enum.Font.GothamBold
+hideButton.Text = "👁️"
+hideButton.Parent = screenGui
+
+local hideCorner = Instance.new("UICorner")
+hideCorner.CornerRadius = UDim.new(0, 20)
+hideCorner.Parent = hideButton
+
+local hideGradient = Instance.new("UIGradient")
+hideGradient.Color = ColorSequence.new({
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(30, 30, 40)),
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(20, 20, 30))
+})
+hideGradient.Parent = hideButton
+
+-- Make frames draggable
+local function makeDraggable(frame)
+    local isDragging = false
+    local dragSpeed = 0.1
+    local dragStart
+    local startPos
+
+    local function updatePosition(input)
+        local delta = input.Position - dragStart
+        local newPosition = UDim2.new(
+            startPos.X.Scale,
+            startPos.X.Offset + delta.X,
+            startPos.Y.Scale,
+            startPos.Y.Offset + delta.Y
+        )
+        TweenService:Create(frame, TweenInfo.new(dragSpeed), {Position = newPosition}):Play()
+    end
+
+    frame.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            isDragging = true
+            dragStart = input.Position
+            startPos = frame.Position
+            input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then
+                    isDragging = false
+                end
+            end)
+        end
+    end)
+
+    frame.InputChanged:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseMovement and isDragging then
+            updatePosition(input)
+        end
+    end)
+end
+
+-- Functions
+local function updateStatus(isFlying)
+    statusText.TextColor3 = isFlying and Color3.fromRGB(0, 255, 150) or Color3.fromRGB(255, 100, 100)
+    statusText.Text = "สถานะการบิน: " .. (isFlying and "เปิด" or "ปิด")
+end
+
+local function updateSpeedDisplay()
+    speedText.Text = "ความเร็ว: " .. FLIGHT_SPEED
+end
+
+local function getCharacter()
+    character = player.Character or player.CharacterAdded:Wait()
+    humanoid = character:WaitForChild("Humanoid")
+    rootPart = character:WaitForChild("HumanoidRootPart")
+end
+
+local function updateFlight()
+    if not flying or not rootPart then return end
+    
+    local moveDirection = Vector3.new(0, 0, 0)
+    local lookVector = camera.CFrame.LookVector
+    local rightVector = camera.CFrame.RightVector
+    
+    if UserInputService:IsKeyDown(Enum.KeyCode.W) then
+        moveDirection = moveDirection + lookVector
+    end
+    if UserInputService:IsKeyDown(Enum.KeyCode.S) then
+        moveDirection = moveDirection - lookVector
+    end
+    if UserInputService:IsKeyDown(Enum.KeyCode.A) then
+        moveDirection = moveDirection - rightVector
+    end
+    if UserInputService:IsKeyDown(Enum.KeyCode.D) then
+        moveDirection = moveDirection + rightVector
+    end
+    if UserInputService:IsKeyDown(ASCEND_KEY) then
+        moveDirection = moveDirection + Vector3.new(0, 1, 0)
+    end
+    if UserInputService:IsKeyDown(DESCEND_KEY) then
+        moveDirection = moveDirection - Vector3.new(0, 1, 0)
+    end
+    
+    if moveDirection.Magnitude > 0 then
+        moveDirection = moveDirection.Unit * (FLIGHT_SPEED / 10)
+    end
+    
+    if rootPart then
+        rootPart.CFrame = rootPart.CFrame + moveDirection
+        rootPart.Velocity = Vector3.new(0, 0, 0)
+    end
+end
+
+local function toggleFlight()
+    flying = not flying
+    
+    if flying then
+        getCharacter()
+        if humanoid and rootPart then
+            humanoid:ChangeState(Enum.HumanoidStateType.Swimming)
+            rootPart.Velocity = Vector3.new(0, 0, 0)
+        end
+    else
+        if humanoid then
+            humanoid:ChangeState(Enum.HumanoidStateType.Landing)
+            task.wait(0.1)
+            humanoid:ChangeState(Enum.HumanoidStateType.Running)
+        end
+    end
+    
+    updateStatus(flying)
+end
+
+local function adjustSpeed(increment)
+    FLIGHT_SPEED = math.clamp(FLIGHT_SPEED + increment, 10, MAX_SPEED)
+    updateSpeedDisplay()
+    
+    local originalColor = speedText.TextColor3
+    speedText.TextColor3 = Color3.fromRGB(255, 255, 0)
+    task.wait(0.2)
+    speedText.TextColor3 = originalColor
+end
+
+-- UI Visibility Toggle
+local uiVisible = true
+hideButton.MouseButton1Click:Connect(function()
+    uiVisible = not uiVisible
+    statusFrame.Visible = uiVisible
+    controlsFrame.Visible = uiVisible
+    hideButton.Text = uiVisible and "👁️" or "👁️‍🗨️"
+end)
+
+-- Input handling
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    
+    if input.KeyCode == TOGGLE_KEY then
+        toggleFlight()
+    elseif input.KeyCode == Enum.KeyCode.Q and flying then
+        adjustSpeed(-SPEED_INCREMENT)
+    elseif input.KeyCode == Enum.KeyCode.E and flying then
+        adjustSpeed(SPEED_INCREMENT)
+    end
+end)
+
+-- Main loop
+RunService.Heartbeat:Connect(function()
+    if flying and rootPart then
+        rootPart.Velocity = Vector3.new(0, 0, 0)
+        updateFlight()
+    end
+end)
+
+-- Character handling
+player.CharacterAdded:Connect(function(newCharacter)
+    character = newCharacter
+    humanoid = character:WaitForChild("Humanoid")
+    rootPart = character:WaitForChild("HumanoidRootPart")
+    
+    if flying then
+        task.wait(0.1)
+        humanoid:ChangeState(Enum.HumanoidStateType.Swimming)
+        rootPart.Velocity = Vector3.new(0, 0, 0)
+    end
+end)
+
+-- Make UI elements draggable
+makeDraggable(hideButton)
+makeDraggable(statusFrame)
+makeDraggable(controlsFrame)
+
+-- Button handling
+toggleButton.MouseButton1Click:Connect(toggleFlight)
+
+-- Initial setup
+getCharacter()
+updateStatus(false)
+updateSpeedDisplay()
