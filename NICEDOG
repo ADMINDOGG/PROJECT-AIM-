@@ -744,7 +744,8 @@ end
 -- Create GUI
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "SpectateGui"
-screenGui.Parent = plr.PlayerGui
+screenGui.ResetOnSpawn = false -- ทำให้ UI ไม่หายเมื่อตาย
+screenGui.Parent = game.CoreGui -- ย้ายไปที่ CoreGui แทน PlayerGui
 
 -- Create Frame
 local mainFrame = Instance.new("Frame")
@@ -752,7 +753,10 @@ mainFrame.Size = UDim2.new(0, 200, 0, 300)
 mainFrame.Position = UDim2.new(0.85, -100, 0.3, 0)
 mainFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
 mainFrame.BorderSizePixel = 0
+mainFrame.Active = true -- ทำให้สามารถลากได้
+mainFrame.Draggable = true -- ทำให้สามารถลากได้
 mainFrame.Parent = screenGui
+
 makeUICorner(mainFrame, 12)
 makeUIGradient(mainFrame,
     Color3.fromRGB(40, 40, 40),
