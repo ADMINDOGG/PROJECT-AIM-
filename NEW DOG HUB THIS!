@@ -1,0 +1,762 @@
+local TweenService = game:GetService("TweenService")
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local Camera = workspace.CurrentCamera
+local LocalPlayer = Players.LocalPlayer
+local Mouse = LocalPlayer:GetMouse()
+
+-- Global Variables
+local guiVisible = true
+local showHealth = true
+local whichListEnabled = false
+local excludedPlayers = {}
+local targetBody = false
+local wallCheckEnabled = false
+local espEnabled = false
+local aimbotEnabled = false
+local target = nil
+local FOVSize = 100
+local smoothness = 0.2
+local espDistance = 1000
+local showESPBox = true
+local showOutline = true
+
+-- ESP Variables and Colors
+local highlightColor = Color3.fromRGB(255, 255, 255) -- Outline color
+local fillColor = Color3.fromRGB(255, 0, 0) -- Fill color (default red)
+local espTextSize = 12 -- Smaller text size
+
+-- ESP Color Options
+local colors = {
+    {name = "Red", color = Color3.fromRGB(255, 0, 0)},
+    {name = "Green", color = Color3.fromRGB(0, 255, 0)},
+    {name = "Blue", color = Color3.fromRGB(0, 0, 255)},
+    {name = "Yellow", color = Color3.fromRGB(255, 255, 0)},
+    {name = "Purple", color = Color3.fromRGB(255, 0, 255)},
+    {name = "White", color = Color3.fromRGB(255, 255, 255)}
+}
+local currentColorIndex = 1
+
+-- Theme Colors
+local THEME = {
+    PRIMARY = Color3.fromRGB(17, 17, 26),
+    SECONDARY = Color3.fromRGB(25, 25, 35),
+    ACCENT = Color3.fromRGB(90, 100, 240),
+    SUCCESS = Color3.fromRGB(40, 180, 120),
+    TEXT_PRIMARY = Color3.fromRGB(255, 255, 255),
+    TEXT_SECONDARY = Color3.fromRGB(180, 180, 200),
+    BORDER = Color3.fromRGB(60, 60, 80)
+}
+
+-- Create Main GUI
+local gui = Instance.new("ScreenGui")
+gui.ResetOnSpawn = false
+gui.Parent = game.CoreGui
+
+-- Create Main Frame
+local frame = Instance.new("Frame")
+frame.Size = UDim2.new(0, 850, 0, 220)
+frame.Position = UDim2.new(0.5, -425, 0.1, 0)
+frame.BackgroundColor3 = THEME.PRIMARY
+frame.BorderSizePixel = 0
+frame.ClipsDescendants = true
+frame.Parent = gui
+
+-- Create ESP Storage
+local espFolder = Instance.new("Folder")
+espFolder.Name = "ESPStorage"
+espFolder.Parent = game.CoreGui
+
+-- Add Corner Radius
+local UICorner = Instance.new("UICorner")
+UICorner.CornerRadius = UDim.new(0, 12)
+UICorner.Parent = frame
+
+-- Add Shadow
+local shadowHolder = Instance.new("Frame")
+shadowHolder.BackgroundTransparency = 1
+shadowHolder.Size = UDim2.new(1, 0, 1, 0)
+shadowHolder.ZIndex = 0
+shadowHolder.Parent = frame
+
+local shadow = Instance.new("ImageLabel")
+shadow.Image = "rbxassetid://7912134082"
+shadow.ImageColor3 = Color3.new(0, 0, 0)
+shadow.ImageTransparency = 0.6
+shadow.Size = UDim2.new(1, 40, 1, 40)
+shadow.Position = UDim2.new(0, -20, 0, -20)
+shadow.BackgroundTransparency = 1
+shadow.Parent = shadowHolder
+-- Create Slider Function
+local function createSlider(name, parent, yOffset, minValue, maxValue, defaultValue)
+    local container = Instance.new("Frame")
+    container.Size = UDim2.new(0.9, 0, 0, 40)
+    container.Position = UDim2.new(0.5, 0, 0, yOffset)
+    container.AnchorPoint = Vector2.new(0.5, 0)
+    container.BackgroundTransparency = 1
+    container.Parent = parent
+
+    local label = Instance.new("TextLabel")
+    label.Size = UDim2.new(1, 0, 0, 20)
+    label.BackgroundTransparency = 1
+    label.Text = name .. ": " .. defaultValue
+    label.TextColor3 = THEME.TEXT_PRIMARY
+    label.TextSize = 14
+    label.Font = Enum.Font.GothamBold
+    label.Parent = container
+
+    local sliderBar = Instance.new("Frame")
+    sliderBar.Name = "SliderBar"
+    sliderBar.Size = UDim2.new(1, 0, 0, 4)
+    sliderBar.Position = UDim2.new(0, 0, 0.8, 0)
+    sliderBar.BackgroundColor3 = THEME.SECONDARY
+    sliderBar.Parent = container
+
+    local sliderFill = Instance.new("Frame")
+    sliderFill.Size = UDim2.new((defaultValue - minValue)/(maxValue - minValue), 0, 1, 0)
+    sliderFill.BackgroundColor3 = THEME.ACCENT
+    sliderFill.Parent = sliderBar
+
+    local dragButton = Instance.new("TextButton")
+    dragButton.Size = UDim2.new(0, 12, 0, 12)
+    dragButton.Position = UDim2.new((defaultValue - minValue)/(maxValue - minValue), -6, 0.5, -6)
+    dragButton.AnchorPoint = Vector2.new(0, 0.5)
+    dragButton.BackgroundColor3 = THEME.ACCENT
+    dragButton.Text = ""
+    dragButton.Parent = sliderBar
+
+    local UICorner = Instance.new("UICorner")
+    UICorner.CornerRadius = UDim.new(1, 0)
+    UICorner.Parent = dragButton
+
+    local UICorner2 = Instance.new("UICorner")
+    UICorner2.CornerRadius = UDim.new(1, 0)
+    UICorner2.Parent = sliderBar
+
+    local UICorner3 = Instance.new("UICorner")
+    UICorner3.CornerRadius = UDim.new(1, 0)
+    UICorner3.Parent = sliderFill
+
+    local value = defaultValue
+    local dragging = false
+
+    dragButton.MouseButton1Down:Connect(function()
+        dragging = true
+    end)
+
+    UserInputService.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            dragging = false
+        end
+    end)
+
+    UserInputService.InputChanged:Connect(function(input)
+        if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+            local mousePos = UserInputService:GetMouseLocation()
+            local sliderPos = sliderBar.AbsolutePosition
+            local sliderSize = sliderBar.AbsoluteSize
+            
+            local relativeX = math.clamp((mousePos.X - sliderPos.X) / sliderSize.X, 0, 1)
+            value = minValue + ((maxValue - minValue) * relativeX)
+            value = math.floor(value * 100) / 100
+            
+            label.Text = name .. ": " .. value
+            sliderFill.Size = UDim2.new(relativeX, 0, 1, 0)
+            dragButton.Position = UDim2.new(relativeX, -6, 0.5, -6)
+            
+            if name == "FOV Size" then
+                FOVSize = value
+            elseif name == "Smoothness" then
+                smoothness = value
+            end
+        end
+    end)
+
+    return container
+end
+
+-- Section Creation Function
+local function createSection(name, position)
+    local section = Instance.new("Frame")
+    section.Size = UDim2.new(0.23, 0, 0.9, 0)
+    section.Position = position
+    section.BackgroundColor3 = THEME.SECONDARY
+    section.BackgroundTransparency = 0.8
+    section.Parent = frame
+
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 8)
+    corner.Parent = section
+
+    local title = Instance.new("TextLabel")
+    title.Size = UDim2.new(1, 0, 0, 30)
+    title.Position = UDim2.new(0, 0, 0, -15)
+    title.BackgroundTransparency = 1
+    title.Text = name
+    title.TextColor3 = THEME.TEXT_PRIMARY
+    title.TextSize = 14
+    title.Font = Enum.Font.GothamBold
+    title.Parent = section
+
+    return section
+end
+
+-- Button Creation Function
+local function createButton(text, parent, yOffset)
+    local button = Instance.new("TextButton")
+    button.Size = UDim2.new(0.9, 0, 0, 35)
+    button.Position = UDim2.new(0.5, 0, 0, yOffset)
+    button.AnchorPoint = Vector2.new(0.5, 0)
+    button.BackgroundColor3 = THEME.SECONDARY
+    button.Text = text
+    button.TextColor3 = THEME.TEXT_PRIMARY
+    button.TextSize = 14
+    button.Font = Enum.Font.GothamBold
+    button.AutoButtonColor = false
+    button.Parent = parent
+    
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 8)
+    corner.Parent = button
+    
+    local stroke = Instance.new("UIStroke")
+    stroke.Color = THEME.BORDER
+    stroke.Thickness = 1.5
+    stroke.Transparency = 0.5
+    stroke.Parent = button
+
+    button.MouseEnter:Connect(function()
+        TweenService:Create(button, TweenInfo.new(0.3), {
+            BackgroundColor3 = THEME.ACCENT
+        }):Play()
+    end)
+    
+    button.MouseLeave:Connect(function()
+        TweenService:Create(button, TweenInfo.new(0.3), {
+            BackgroundColor3 = THEME.SECONDARY
+        }):Play()
+    end)
+    
+    return button
+end
+
+-- Create Main Sections
+local combatSection = createSection("Combat", UDim2.new(0.02, 0, 0.05, 0))
+local visualSection = createSection("Visual", UDim2.new(0.27, 0, 0.05, 0))
+local settingsSection = createSection("Settings", UDim2.new(0.52, 0, 0.05, 0))
+local extraSection = createSection("Extra", UDim2.new(0.77, 0, 0.05, 0))
+-- ESP Functions
+local function createNameTag(player)
+    local billboard = Instance.new("BillboardGui")
+    billboard.Name = "ESP_Name"
+    billboard.Size = UDim2.new(0, 150, 0, 40)
+    billboard.StudsOffset = Vector3.new(0, 2, 0)
+    billboard.AlwaysOnTop = true
+    billboard.MaxDistance = espDistance
+
+    local nameLabel = Instance.new("TextLabel")
+    nameLabel.Size = UDim2.new(1, 0, 1, 0)
+    nameLabel.BackgroundTransparency = 1
+    nameLabel.Text = player.Name
+    nameLabel.TextColor3 = Color3.new(1, 1, 1)
+    nameLabel.TextStrokeTransparency = 0
+    nameLabel.TextStrokeColor3 = Color3.new(0, 0, 0)
+    nameLabel.TextSize = espTextSize
+    nameLabel.Font = Enum.Font.GothamBold
+    nameLabel.Parent = billboard
+
+    return billboard
+end
+
+local function createChams(character)
+    local highlight = Instance.new("Highlight")
+    highlight.Name = "ESP_Highlight"
+    highlight.FillColor = fillColor
+    highlight.OutlineColor = highlightColor
+    highlight.FillTransparency = 0.8
+    highlight.OutlineTransparency = 0
+    highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+    highlight.Parent = espFolder
+    highlight.Adornee = character
+
+    local player = Players:GetPlayerFromCharacter(character)
+    if player then
+        local nameTag = createNameTag(player)
+        nameTag.Parent = character:WaitForChild("Head")
+    end
+end
+
+local function removeESP(character)
+    if character then
+        for _, highlight in pairs(espFolder:GetChildren()) do
+            if highlight.Adornee == character then
+                highlight:Destroy()
+            end
+        end
+
+        local head = character:FindFirstChild("Head")
+        if head then
+            local nameTag = head:FindFirstChild("ESP_Name")
+            if nameTag then
+                nameTag:Destroy()
+            end
+        end
+    end
+end
+
+-- Player List Function
+local function createPlayerDropdown(parent, yOffset)
+    local container = Instance.new("Frame")
+    container.Size = UDim2.new(0.9, 0, 0, 200)
+    container.Position = UDim2.new(0.5, 0, 0, yOffset)
+    container.AnchorPoint = Vector2.new(0.5, 0)
+    container.BackgroundColor3 = THEME.SECONDARY
+    container.BackgroundTransparency = 0.5
+    container.Visible = false
+    container.Parent = parent
+    
+    local UICorner = Instance.new("UICorner")
+    UICorner.CornerRadius = UDim.new(0, 8)
+    UICorner.Parent = container
+    
+    local scrollFrame = Instance.new("ScrollingFrame")
+    scrollFrame.Size = UDim2.new(1, -10, 1, -10)
+    scrollFrame.Position = UDim2.new(0, 5, 0,5)
+    scrollFrame.BackgroundTransparency = 1
+    scrollFrame.ScrollBarThickness = 4
+    scrollFrame.Parent = container
+    
+    local listLayout = Instance.new("UIListLayout")
+    listLayout.Padding = UDim.new(0, 5)
+    listLayout.Parent = scrollFrame
+
+    local function createPlayerButton(player)
+        local button = Instance.new("TextButton")
+        button.Size = UDim2.new(1, -10, 0, 35)
+        button.BackgroundColor3 = THEME.SECONDARY
+        button.BackgroundTransparency = 0.3
+        button.Text = player.Name
+        button.TextColor3 = THEME.TEXT_PRIMARY
+        button.TextSize = 14
+        button.Font = Enum.Font.GothamMedium
+        button.Parent = scrollFrame
+        
+        local UICorner = Instance.new("UICorner")
+        UICorner.CornerRadius = UDim.new(0, 6)
+        UICorner.Parent = button
+        
+        local stroke = Instance.new("UIStroke")
+        stroke.Color = THEME.BORDER
+        stroke.Thickness = 1
+        stroke.Transparency = 0.5
+        stroke.Parent = button
+        
+        button.MouseButton1Click:Connect(function()
+            if excludedPlayers[player] then
+                excludedPlayers[player] = nil
+                TweenService:Create(button, TweenInfo.new(0.3), {
+                    BackgroundColor3 = THEME.SECONDARY,
+                    TextColor3 = THEME.TEXT_PRIMARY
+                }):Play()
+            else
+                excludedPlayers[player] = true
+                TweenService:Create(button, TweenInfo.new(0.3), {
+                    BackgroundColor3 = Color3.fromRGB(180, 40, 40),
+                    TextColor3 = Color3.fromRGB(255, 200, 200)
+                }):Play()
+            end
+        end)
+
+        button.MouseEnter:Connect(function()
+            if not excludedPlayers[player] then
+                TweenService:Create(button, TweenInfo.new(0.3), {
+                    BackgroundTransparency = 0.1
+                }):Play()
+            end
+        end)
+
+        button.MouseLeave:Connect(function()
+            if not excludedPlayers[player] then
+                TweenService:Create(button, TweenInfo.new(0.3), {
+                    BackgroundTransparency = 0.3
+                }):Play()
+            end
+        end)
+        
+        return button
+    end
+    
+    -- Create buttons for existing players
+    for _, player in pairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer then
+            createPlayerButton(player)
+        end
+    end
+    
+    -- Handle new players joining
+    Players.PlayerAdded:Connect(function(player)
+        if player ~= LocalPlayer then
+            createPlayerButton(player)
+        end
+    end)
+    
+    -- Handle players leaving
+    Players.PlayerRemoving:Connect(function(player)
+        local button = scrollFrame:FindFirstChild(player.Name)
+        if button then button:Destroy() end
+    end)
+    
+    return container
+end
+
+-- Create Buttons
+local aimbotButton = createButton("Aimbot: OFF", combatSection, 20)
+local espButton = createButton("ESP: OFF", visualSection, 20)
+local espBoxButton = createButton("Box ESP: ON", visualSection, 65)
+local outlineButton = createButton("Outline: ON", visualSection, 110)
+local espColorButton = createButton("ESP Color: Red", visualSection, 155)
+local wallCheckButton = createButton("Wall Check: OFF", settingsSection, 20)
+local targetPartButton = createButton("Target: Head", settingsSection, 65)
+
+-- Create FOV Circle
+local FOVCircle = Drawing.new("Circle")
+FOVCircle.Thickness = 2
+FOVCircle.Color = THEME.ACCENT
+FOVCircle.Transparency = 0.7
+FOVCircle.Visible = false
+FOVCircle.Filled = false
+FOVCircle.NumSides = 64
+
+-- Create Sliders
+local fovSlider = createSlider("FOV Size", combatSection, 65, 30, 800, FOVSize)
+local smoothSlider = createSlider("Smoothness", combatSection, 110, 0.01, 1, smoothness)
+
+-- Create player list
+local whichListButton = createButton("Player List", extraSection, 20)
+local playerListDropdown = createPlayerDropdown(extraSection, 65)
+-- Button Handlers
+aimbotButton.MouseButton1Click:Connect(function()
+    aimbotEnabled = not aimbotEnabled
+    aimbotButton.Text = aimbotEnabled and "Aimbot: ON" or "Aimbot: OFF"
+    
+    TweenService:Create(aimbotButton, TweenInfo.new(0.3), {
+        BackgroundColor3 = aimbotEnabled and THEME.SUCCESS or THEME.SECONDARY
+    }):Play()
+    
+    FOVCircle.Visible = aimbotEnabled
+end)
+
+espButton.MouseButton1Click:Connect(function()
+    espEnabled = not espEnabled
+    espButton.Text = espEnabled and "ESP: ON" or "ESP: OFF"
+    
+    TweenService:Create(espButton, TweenInfo.new(0.3), {
+        BackgroundColor3 = espEnabled and THEME.SUCCESS or THEME.SECONDARY
+    }):Play()
+    
+    if espEnabled then
+        for _, player in pairs(Players:GetPlayers()) do
+            if player ~= LocalPlayer and not excludedPlayers[player] and player.Character then
+                createChams(player.Character)
+            end
+        end
+    else
+        for _, player in pairs(Players:GetPlayers()) do
+            if player.Character then
+                removeESP(player.Character)
+            end
+        end
+    end
+end)
+
+espColorButton.MouseButton1Click:Connect(function()
+    currentColorIndex = (currentColorIndex % #colors) + 1
+    fillColor = colors[currentColorIndex].color
+    espColorButton.Text = "ESP Color: " .. colors[currentColorIndex].name
+    
+    -- Update all existing ESP
+    for _, highlight in pairs(espFolder:GetChildren()) do
+        if highlight:IsA("Highlight") then
+            highlight.FillColor = fillColor
+        end
+    end
+end)
+
+outlineButton.MouseButton1Click:Connect(function()
+    showOutline = not showOutline
+    outlineButton.Text = "Outline: " .. (showOutline and "ON" or "OFF")
+    
+    TweenService:Create(outlineButton, TweenInfo.new(0.3), {
+        BackgroundColor3 = showOutline and THEME.SUCCESS or THEME.SECONDARY
+    }):Play()
+    
+    for _, highlight in pairs(espFolder:GetChildren()) do
+        if highlight:IsA("Highlight") then
+            highlight.OutlineTransparency = showOutline and 0 or 1
+        end
+    end
+end)
+
+espBoxButton.MouseButton1Click:Connect(function()
+    showESPBox = not showESPBox
+    espBoxButton.Text = "Box ESP: " .. (showESPBox and "ON" or "OFF")
+    
+    TweenService:Create(espBoxButton, TweenInfo.new(0.3), {
+        BackgroundColor3 = showESPBox and THEME.SUCCESS or THEME.SECONDARY
+    }):Play()
+    
+    for _, highlight in pairs(espFolder:GetChildren()) do
+        if highlight:IsA("Highlight") then
+            highlight.FillTransparency = showESPBox and 0.8 or 1
+        end
+    end
+end)
+
+wallCheckButton.MouseButton1Click:Connect(function()
+    wallCheckEnabled = not wallCheckEnabled
+    wallCheckButton.Text = "Wall Check: " .. (wallCheckEnabled and "ON" or "OFF")
+    
+    TweenService:Create(wallCheckButton, TweenInfo.new(0.3), {
+        BackgroundColor3 = wallCheckEnabled and THEME.SUCCESS or THEME.SECONDARY
+    }):Play()
+end)
+
+targetPartButton.MouseButton1Click:Connect(function()
+    targetBody = not targetBody
+    targetPartButton.Text = "Target: " .. (targetBody and "Body" or "Head")
+    
+    TweenService:Create(targetPartButton, TweenInfo.new(0.3), {
+        BackgroundColor3 = targetBody and THEME.SUCCESS or THEME.SECONDARY
+    }):Play()
+end)
+
+whichListButton.MouseButton1Click:Connect(function()
+    whichListEnabled = not whichListEnabled
+    TweenService:Create(whichListButton, TweenInfo.new(0.3), {
+        BackgroundColor3 = whichListEnabled and THEME.SUCCESS or THEME.SECONDARY
+    }):Play()
+    playerListDropdown.Visible = whichListEnabled
+end)
+
+-- Aimbot Functions
+local function canSeeTarget(targetPart)
+    local origin = Camera.CFrame.Position
+    local direction = (targetPart.Position - origin).Unit
+    local raycastParams = RaycastParams.new()
+    raycastParams.FilterType = Enum.RaycastFilterType.Blacklist
+    raycastParams.FilterDescendantsInstances = {LocalPlayer.Character}
+    
+    local raycastResult = workspace:Raycast(origin, direction * 1000, raycastParams)
+    
+    if raycastResult then
+        local hit = raycastResult.Instance
+        local humanoid = hit.Parent:FindFirstChild("Humanoid") or hit.Parent.Parent:FindFirstChild("Humanoid")
+        if humanoid then
+            return humanoid.Parent == targetPart.Parent
+        end
+        return false
+    end
+    return true
+end
+
+local function getClosestPlayer()
+    local closestPlayer = nil
+    local shortestDistance = FOVSize
+    local mousePos = Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y/2)
+    
+    for _, player in pairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer and not excludedPlayers[player] then
+            local character = player.Character
+            if character and character:FindFirstChild("Humanoid") and
+               character.Humanoid.Health > 0 then
+                
+                local targetPart = targetBody and 
+                    character:FindFirstChild("HumanoidRootPart") or
+                    character:FindFirstChild("Head")
+                
+                if targetPart then
+                    local screenPoint, onScreen = Camera:WorldToScreenPoint(targetPart.Position)
+                    
+                    if onScreen and screenPoint.Z > 0 then
+                        local screenPosition = Vector2.new(screenPoint.X, screenPoint.Y)
+                        local distanceFromMouse = (screenPosition - mousePos).Magnitude
+                        
+                        if distanceFromMouse < shortestDistance then
+                            if not wallCheckEnabled or canSeeTarget(targetPart) then
+                                closestPlayer = player
+                                shortestDistance = distanceFromMouse
+                            end
+                        end
+                    end
+                end
+            end
+        end
+    end
+    return closestPlayer
+end
+
+-- Update ESP
+local function updateESP()
+    for _, player in pairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer then
+            if player.Character and player.Character:FindFirstChild("Humanoid") then
+                if espEnabled and not excludedPlayers[player] then
+                    local hasESP = false
+                    if player.Character:FindFirstChild("Head") then
+                        hasESP = player.Character.Head:FindFirstChild("ESP_Name") ~= nil
+                    end
+                    
+                    if not hasESP then
+                        createChams(player.Character)
+                    end
+                else
+                    removeESP(player.Character)
+                end
+            end
+        end
+    end
+end
+
+-- Player Events
+Players.PlayerAdded:Connect(function(player)
+    if player ~= LocalPlayer then
+        player.CharacterAdded:Connect(function(character)
+            wait(0.5)
+            if espEnabled and not excludedPlayers[player] then
+                createChams(character)
+            end
+        end)
+    end
+end)
+
+Players.PlayerRemoving:Connect(function(player)
+    if player.Character then
+        removeESP(player.Character)
+    end
+    excludedPlayers[player] = nil
+end)
+
+-- RunService Updates
+RunService.RenderStepped:Connect(function()
+    FOVCircle.Position = Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y/2)
+    FOVCircle.Radius = FOVSize
+    
+    if espEnabled then
+        updateESP()
+    end
+    
+    if aimbotEnabled and UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton2) then
+        local target = getClosestPlayer()
+        if target then
+            local targetPart = targetBody and 
+                target.Character:FindFirstChild("HumanoidRootPart") or
+                target.Character:FindFirstChild("Head")
+            
+            if targetPart then
+                local targetPos = targetPart.Position
+                local targetVel = targetPart.Velocity
+                
+                local distance = (Camera.CFrame.Position - targetPos).Magnitude
+                local predictionMultiplier = 0.15 * (1 - (distance / 1000))
+                targetPos = targetPos + (targetVel * predictionMultiplier)
+                
+                local targetCFrame = CFrame.lookAt(Camera.CFrame.Position, targetPos)
+                Camera.CFrame = Camera.CFrame:Lerp(targetCFrame, smoothness)
+            end
+        end
+    end
+end)
+
+-- Make Frame Draggable
+local dragging = false
+local dragStart
+local startPos
+
+local function updateDrag(input)
+    if dragging then
+        local delta = input.Position - dragStart
+        frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+    end
+end
+
+frame.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        dragging = true
+        dragStart = input.Position
+        startPos = frame.Position
+    end
+end)
+
+frame.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        dragging = false
+    end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseMovement then
+        updateDrag(input)
+    end
+end)
+
+-- GUI Toggle
+UserInputService.InputBegan:Connect(function(input)
+    if input.KeyCode == Enum.KeyCode.Insert then
+        guiVisible = not guiVisible
+        gui.Enabled = guiVisible
+    end
+end)
+
+-- Initialize
+createNotification = function(text, duration)
+    local notif = Instance.new("Frame")
+    notif.Size = UDim2.new(0, 250, 0, 45)
+    notif.Position = UDim2.new(1, -270, 1, -60)
+    notif.BackgroundColor3 = THEME.SECONDARY
+    notif.BackgroundTransparency = 0.3
+    notif.Parent = gui
+    
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 8)
+    corner.Parent = notif
+    
+    local label = Instance.new("TextLabel")
+    label.Size = UDim2.new(1, -20, 1, 0)
+    label.Position = UDim2.new(0, 10, 0, 0)
+    label.BackgroundTransparency = 1
+    label.Text = text
+    label.TextColor3 = THEME.TEXT_PRIMARY
+    label.TextSize = 14
+    label.Font = Enum.Font.GothamBold
+    label.Parent = notif
+    
+    TweenService:Create(notif, TweenInfo.new(0.5, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+        Position = UDim2.new(1, -270, 1, -60)
+    }):Play()
+    
+    wait(duration)
+    
+    TweenService:Create(notif, TweenInfo.new(0.5, Enum.EasingStyle.Quart, Enum.EasingDirection.In), {
+        Position = UDim2.new(1, 0, 1, -60)
+    }):Play()
+    
+    wait(0.5)
+    notif:Destroy()
+end
+
+-- Create initial notifications
+spawn(function()
+    createNotification("Combat Assistant Loaded", 3)
+    wait(3)
+    createNotification("Press INSERT to toggle GUI", 3)
+end)
+
+-- Initialize ESP for existing players
+for _, player in pairs(Players:GetPlayers()) do
+    if player ~= LocalPlayer then
+        if player.Character and espEnabled then
+            createChams(player.Character)
+        end
+    end
+end
