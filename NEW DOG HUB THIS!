@@ -1,3 +1,4 @@
+-- Services
 local TweenService = game:GetService("TweenService")
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -37,6 +38,7 @@ local colors = {
     {name = "White", color = Color3.fromRGB(255, 255, 255)}
 }
 local currentColorIndex = 1
+local currentOutlineColorIndex = 1
 
 -- Theme Colors
 local THEME = {
@@ -48,7 +50,6 @@ local THEME = {
     TEXT_SECONDARY = Color3.fromRGB(180, 180, 200),
     BORDER = Color3.fromRGB(60, 60, 80)
 }
-
 -- Create Main GUI
 local gui = Instance.new("ScreenGui")
 gui.ResetOnSpawn = false
@@ -88,6 +89,32 @@ shadow.Size = UDim2.new(1, 40, 1, 40)
 shadow.Position = UDim2.new(0, -20, 0, -20)
 shadow.BackgroundTransparency = 1
 shadow.Parent = shadowHolder
+
+-- Section Creation Function
+local function createSection(name, position)
+    local section = Instance.new("Frame")
+    section.Size = UDim2.new(0.23, 0, 0.9, 0)
+    section.Position = position
+    section.BackgroundColor3 = THEME.SECONDARY
+    section.BackgroundTransparency = 0.8
+    section.Parent = frame
+
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 8)
+    corner.Parent = section
+
+    local title = Instance.new("TextLabel")
+    title.Size = UDim2.new(1, 0, 0, 30)
+    title.Position = UDim2.new(0, 0, 0, -15)
+    title.BackgroundTransparency = 1
+    title.Text = name
+    title.TextColor3 = THEME.TEXT_PRIMARY
+    title.TextSize = 14
+    title.Font = Enum.Font.GothamBold
+    title.Parent = section
+
+    return section
+end
 -- Create Slider Function
 local function createSlider(name, parent, yOffset, minValue, maxValue, defaultValue)
     local container = Instance.new("Frame")
@@ -126,6 +153,7 @@ local function createSlider(name, parent, yOffset, minValue, maxValue, defaultVa
     dragButton.Text = ""
     dragButton.Parent = sliderBar
 
+    -- Add Corner Radius to Slider Elements
     local UICorner = Instance.new("UICorner")
     UICorner.CornerRadius = UDim.new(1, 0)
     UICorner.Parent = dragButton
@@ -176,32 +204,6 @@ local function createSlider(name, parent, yOffset, minValue, maxValue, defaultVa
     return container
 end
 
--- Section Creation Function
-local function createSection(name, position)
-    local section = Instance.new("Frame")
-    section.Size = UDim2.new(0.23, 0, 0.9, 0)
-    section.Position = position
-    section.BackgroundColor3 = THEME.SECONDARY
-    section.BackgroundTransparency = 0.8
-    section.Parent = frame
-
-    local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, 8)
-    corner.Parent = section
-
-    local title = Instance.new("TextLabel")
-    title.Size = UDim2.new(1, 0, 0, 30)
-    title.Position = UDim2.new(0, 0, 0, -15)
-    title.BackgroundTransparency = 1
-    title.Text = name
-    title.TextColor3 = THEME.TEXT_PRIMARY
-    title.TextSize = 14
-    title.Font = Enum.Font.GothamBold
-    title.Parent = section
-
-    return section
-end
-
 -- Button Creation Function
 local function createButton(text, parent, yOffset)
     local button = Instance.new("TextButton")
@@ -240,23 +242,19 @@ local function createButton(text, parent, yOffset)
     
     return button
 end
-
--- Create Main Sections
-local combatSection = createSection("Combat", UDim2.new(0.02, 0, 0.05, 0))
-local visualSection = createSection("Visual", UDim2.new(0.27, 0, 0.05, 0))
-local settingsSection = createSection("Settings", UDim2.new(0.52, 0, 0.05, 0))
-local extraSection = createSection("Extra", UDim2.new(0.77, 0, 0.05, 0))
 -- ESP Functions
 local function createNameTag(player)
     local billboard = Instance.new("BillboardGui")
     billboard.Name = "ESP_Name"
-    billboard.Size = UDim2.new(0, 150, 0, 40)
+    billboard.Size = UDim2.new(0, 150, 0, 60)
     billboard.StudsOffset = Vector3.new(0, 2, 0)
     billboard.AlwaysOnTop = true
     billboard.MaxDistance = espDistance
 
+    -- Name Label
     local nameLabel = Instance.new("TextLabel")
-    nameLabel.Size = UDim2.new(1, 0, 1, 0)
+    nameLabel.Size = UDim2.new(1, 0, 0.5, 0)
+    nameLabel.Position = UDim2.new(0, 0, 0, 0)
     nameLabel.BackgroundTransparency = 1
     nameLabel.Text = player.Name
     nameLabel.TextColor3 = Color3.new(1, 1, 1)
@@ -265,6 +263,51 @@ local function createNameTag(player)
     nameLabel.TextSize = espTextSize
     nameLabel.Font = Enum.Font.GothamBold
     nameLabel.Parent = billboard
+
+    -- HP Label
+    local hpLabel = Instance.new("TextLabel")
+    hpLabel.Name = "HPLabel"
+    hpLabel.Size = UDim2.new(1, 0, 0.5, 0)
+    hpLabel.Position = UDim2.new(0, 0, 0.5, 0)
+    hpLabel.BackgroundTransparency = 1
+    hpLabel.TextColor3 = Color3.new(1, 1, 1)
+    hpLabel.TextStrokeTransparency = 0
+    hpLabel.TextStrokeColor3 = Color3.new(0, 0, 0)
+    hpLabel.TextSize = espTextSize
+    hpLabel.Font = Enum.Font.GothamBold
+    hpLabel.Parent = billboard
+
+    -- Update HP function
+    local function updateHP()
+        local character = player.Character
+        if character then
+            local humanoid = character:FindFirstChild("Humanoid")
+            if humanoid then
+                local hp = math.floor((humanoid.Health / humanoid.MaxHealth) * 100)
+                hpLabel.Text = hp .. "%"
+                
+                if hp > 75 then
+                    hpLabel.TextColor3 = Color3.fromRGB(0, 255, 0)
+                elseif hp > 50 then
+                    hpLabel.TextColor3 = Color3.fromRGB(255, 255, 0)
+                elseif hp > 25 then
+                    hpLabel.TextColor3 = Color3.fromRGB(255, 125, 0)
+                else
+                    hpLabel.TextColor3 = Color3.fromRGB(255, 0, 0)
+                end
+            end
+        end
+    end
+
+    -- Connect HP update
+    local character = player.Character
+    if character then
+        local humanoid = character:FindFirstChild("Humanoid")
+        if humanoid then
+            updateHP() -- Initial update
+            humanoid.HealthChanged:Connect(updateHP)
+        end
+    end
 
     return billboard
 end
@@ -305,119 +348,106 @@ local function removeESP(character)
     end
 end
 
--- Player List Function
-local function createPlayerDropdown(parent, yOffset)
-    local container = Instance.new("Frame")
-    container.Size = UDim2.new(0.9, 0, 0, 200)
-    container.Position = UDim2.new(0.5, 0, 0, yOffset)
-    container.AnchorPoint = Vector2.new(0.5, 0)
-    container.BackgroundColor3 = THEME.SECONDARY
-    container.BackgroundTransparency = 0.5
-    container.Visible = false
-    container.Parent = parent
-    
-    local UICorner = Instance.new("UICorner")
-    UICorner.CornerRadius = UDim.new(0, 8)
-    UICorner.Parent = container
-    
-    local scrollFrame = Instance.new("ScrollingFrame")
-    scrollFrame.Size = UDim2.new(1, -10, 1, -10)
-    scrollFrame.Position = UDim2.new(0, 5, 0,5)
-    scrollFrame.BackgroundTransparency = 1
-    scrollFrame.ScrollBarThickness = 4
-    scrollFrame.Parent = container
-    
-    local listLayout = Instance.new("UIListLayout")
-    listLayout.Padding = UDim.new(0, 5)
-    listLayout.Parent = scrollFrame
-
-    local function createPlayerButton(player)
-        local button = Instance.new("TextButton")
-        button.Size = UDim2.new(1, -10, 0, 35)
-        button.BackgroundColor3 = THEME.SECONDARY
-        button.BackgroundTransparency = 0.3
-        button.Text = player.Name
-        button.TextColor3 = THEME.TEXT_PRIMARY
-        button.TextSize = 14
-        button.Font = Enum.Font.GothamMedium
-        button.Parent = scrollFrame
-        
-        local UICorner = Instance.new("UICorner")
-        UICorner.CornerRadius = UDim.new(0, 6)
-        UICorner.Parent = button
-        
-        local stroke = Instance.new("UIStroke")
-        stroke.Color = THEME.BORDER
-        stroke.Thickness = 1
-        stroke.Transparency = 0.5
-        stroke.Parent = button
-        
-        button.MouseButton1Click:Connect(function()
-            if excludedPlayers[player] then
-                excludedPlayers[player] = nil
-                TweenService:Create(button, TweenInfo.new(0.3), {
-                    BackgroundColor3 = THEME.SECONDARY,
-                    TextColor3 = THEME.TEXT_PRIMARY
-                }):Play()
-            else
-                excludedPlayers[player] = true
-                TweenService:Create(button, TweenInfo.new(0.3), {
-                    BackgroundColor3 = Color3.fromRGB(180, 40, 40),
-                    TextColor3 = Color3.fromRGB(255, 200, 200)
-                }):Play()
-            end
-        end)
-
-        button.MouseEnter:Connect(function()
-            if not excludedPlayers[player] then
-                TweenService:Create(button, TweenInfo.new(0.3), {
-                    BackgroundTransparency = 0.1
-                }):Play()
-            end
-        end)
-
-        button.MouseLeave:Connect(function()
-            if not excludedPlayers[player] then
-                TweenService:Create(button, TweenInfo.new(0.3), {
-                    BackgroundTransparency = 0.3
-                }):Play()
-            end
-        end)
-        
-        return button
+local function removeAllESP()
+    for _, highlight in pairs(espFolder:GetChildren()) do
+        highlight:Destroy()
     end
-    
-    -- Create buttons for existing players
+
     for _, player in pairs(Players:GetPlayers()) do
-        if player ~= LocalPlayer then
-            createPlayerButton(player)
+        if player ~= LocalPlayer and player.Character then
+            local head = player.Character:FindFirstChild("Head")
+            if head then
+                local nameTag = head:FindFirstChild("ESP_Name")
+                if nameTag then
+                    nameTag:Destroy()
+                end
+            end
         end
     end
-    
-    -- Handle new players joining
-    Players.PlayerAdded:Connect(function(player)
-        if player ~= LocalPlayer then
-            createPlayerButton(player)
-        end
-    end)
-    
-    -- Handle players leaving
-    Players.PlayerRemoving:Connect(function(player)
-        local button = scrollFrame:FindFirstChild(player.Name)
-        if button then button:Destroy() end
-    end)
-    
-    return container
 end
 
--- Create Buttons
-local aimbotButton = createButton("Aimbot: OFF", combatSection, 20)
-local espButton = createButton("ESP: OFF", visualSection, 20)
-local espBoxButton = createButton("Box ESP: ON", visualSection, 65)
-local outlineButton = createButton("Outline: ON", visualSection, 110)
-local espColorButton = createButton("ESP Color: Red", visualSection, 155)
-local wallCheckButton = createButton("Wall Check: OFF", settingsSection, 20)
-local targetPartButton = createButton("Target: Head", settingsSection, 65)
+local function updateESP()
+    if espEnabled then
+        for _, player in pairs(Players:GetPlayers()) do
+            if player ~= LocalPlayer then
+                if player.Character and player.Character:FindFirstChild("Humanoid") then
+                    local hasESP = false
+                    if player.Character:FindFirstChild("Head") then
+                        hasESP = player.Character.Head:FindFirstChild("ESP_Name") ~= nil
+                    end
+                    
+                    if not hasESP then
+                        createChams(player.Character)
+                    end
+                end
+            end
+        end
+    end
+end
+
+-- Aimbot Functions
+local function canSeeTarget(targetPart)
+    local origin = Camera.CFrame.Position
+    local direction = (targetPart.Position - origin).Unit
+    local raycastParams = RaycastParams.new()
+    raycastParams.FilterType = Enum.RaycastFilterType.Blacklist
+    raycastParams.FilterDescendantsInstances = {LocalPlayer.Character}
+    
+    local raycastResult = workspace:Raycast(origin, direction * 1000, raycastParams)
+    
+    if raycastResult then
+        local hit = raycastResult.Instance
+        local humanoid = hit.Parent:FindFirstChild("Humanoid") or hit.Parent.Parent:FindFirstChild("Humanoid")
+        if humanoid then
+            return humanoid.Parent == targetPart.Parent
+        end
+        return false
+    end
+    return true
+end
+
+local function getClosestToCenter()
+    local closestPlayer = nil
+    local shortestDistance = FOVSize -- Initialize with FOV size as maximum distance
+    local mousePos = UserInputService:GetMouseLocation()
+    
+    for _, player in pairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer and not excludedPlayers[player] then
+            local character = player.Character
+            if character and character:FindFirstChild("Humanoid") and
+               character.Humanoid.Health > 0 then
+                
+                local targetPart = targetBody and 
+                    character:FindFirstChild("HumanoidRootPart") or
+                    character:FindFirstChild("Head")
+                
+                if targetPart then
+                    local screenPoint, onScreen = Camera:WorldToScreenPoint(targetPart.Position)
+                    
+                    if onScreen and screenPoint.Z > 0 then
+                        local screenPosition = Vector2.new(screenPoint.X, screenPoint.Y)
+                        local distanceFromMouse = (screenPosition - mousePos).Magnitude
+                        
+                        if distanceFromMouse <= FOVSize then
+                            if distanceFromMouse < shortestDistance then
+                                if not wallCheckEnabled or canSeeTarget(targetPart) then
+                                    closestPlayer = player
+                                    shortestDistance = distanceFromMouse
+                                end
+                            end
+                        end
+                    end
+                end
+            end
+        end
+    end
+    return closestPlayer
+end
+-- Create Main Sections
+local combatSection = createSection("Combat", UDim2.new(0.02, 0, 0.05, 0))
+local visualSection = createSection("Visual", UDim2.new(0.27, 0, 0.05, 0))
+local settingsSection = createSection("Settings", UDim2.new(0.52, 0, 0.05, 0))
+local extraSection = createSection("Extra", UDim2.new(0.77, 0, 0.05, 0))
 
 -- Create FOV Circle
 local FOVCircle = Drawing.new("Circle")
@@ -428,13 +458,20 @@ FOVCircle.Visible = false
 FOVCircle.Filled = false
 FOVCircle.NumSides = 64
 
+-- Create Buttons
+local aimbotButton = createButton("Aimbot: OFF", combatSection, 20)
+local espButton = createButton("ESP: OFF", visualSection, 20)
+local espBoxButton = createButton("Box ESP: ON", visualSection, 65)
+local outlineButton = createButton("Outline: ON", visualSection, 110)
+local espColorButton = createButton("Box Color: Red", visualSection, 155)
+local espOutlineColorButton = createButton("Outline Color: White", visualSection, 200)
+local wallCheckButton = createButton("Wall Check: OFF", settingsSection, 20)
+local targetPartButton = createButton("Target: Head", settingsSection, 65)
+
 -- Create Sliders
 local fovSlider = createSlider("FOV Size", combatSection, 65, 30, 800, FOVSize)
 local smoothSlider = createSlider("Smoothness", combatSection, 110, 0.01, 1, smoothness)
 
--- Create player list
-local whichListButton = createButton("Player List", extraSection, 20)
-local playerListDropdown = createPlayerDropdown(extraSection, 65)
 -- Button Handlers
 aimbotButton.MouseButton1Click:Connect(function()
     aimbotEnabled = not aimbotEnabled
@@ -457,28 +494,35 @@ espButton.MouseButton1Click:Connect(function()
     
     if espEnabled then
         for _, player in pairs(Players:GetPlayers()) do
-            if player ~= LocalPlayer and not excludedPlayers[player] and player.Character then
+            if player ~= LocalPlayer and player.Character then
                 createChams(player.Character)
             end
         end
     else
-        for _, player in pairs(Players:GetPlayers()) do
-            if player.Character then
-                removeESP(player.Character)
-            end
-        end
+        removeAllESP()
     end
 end)
 
 espColorButton.MouseButton1Click:Connect(function()
     currentColorIndex = (currentColorIndex % #colors) + 1
     fillColor = colors[currentColorIndex].color
-    espColorButton.Text = "ESP Color: " .. colors[currentColorIndex].name
+    espColorButton.Text = "Box Color: " .. colors[currentColorIndex].name
     
-    -- Update all existing ESP
     for _, highlight in pairs(espFolder:GetChildren()) do
         if highlight:IsA("Highlight") then
             highlight.FillColor = fillColor
+        end
+    end
+end)
+
+espOutlineColorButton.MouseButton1Click:Connect(function()
+    currentOutlineColorIndex = (currentOutlineColorIndex % #colors) + 1
+    highlightColor = colors[currentOutlineColorIndex].color
+    espOutlineColorButton.Text = "Outline Color: " .. colors[currentOutlineColorIndex].name
+    
+    for _, highlight in pairs(espFolder:GetChildren()) do
+        if highlight:IsA("Highlight") then
+            highlight.OutlineColor = highlightColor
         end
     end
 end)
@@ -530,6 +574,111 @@ targetPartButton.MouseButton1Click:Connect(function()
         BackgroundColor3 = targetBody and THEME.SUCCESS or THEME.SECONDARY
     }):Play()
 end)
+-- Create Player List Function
+local function createPlayerDropdown(parent, yOffset)
+    local container = Instance.new("Frame")
+    container.Size = UDim2.new(0.9, 0, 0, 200)
+    container.Position = UDim2.new(0.5, 0, 0, yOffset)
+    container.AnchorPoint = Vector2.new(0.5, 0)
+    container.BackgroundColor3 = THEME.SECONDARY
+    container.BackgroundTransparency = 0.5
+    container.Visible = false
+    container.Parent = parent
+    
+    local UICorner = Instance.new("UICorner")
+    UICorner.CornerRadius = UDim.new(0, 8)
+    UICorner.Parent = container
+    
+    local scrollFrame = Instance.new("ScrollingFrame")
+    scrollFrame.Size = UDim2.new(1, -10, 1, -10)
+    scrollFrame.Position = UDim2.new(0, 5, 0, 5)
+    scrollFrame.BackgroundTransparency = 1
+    scrollFrame.ScrollBarThickness = 4
+    scrollFrame.Parent = container
+    
+    local listLayout = Instance.new("UIListLayout")
+    listLayout.Padding = UDim.new(0, 5)
+    listLayout.Parent = scrollFrame
+
+    local function createPlayerButton(player)
+        local button = Instance.new("TextButton")
+        button.Size = UDim2.new(1, -10, 0, 35)
+        button.BackgroundColor3 = THEME.SECONDARY
+        button.BackgroundTransparency = 0.3
+        button.Text = player.Name
+        button.TextColor3 = THEME.TEXT_PRIMARY
+        button.TextSize = 14
+        button.Font = Enum.Font.GothamMedium
+        button.Parent = scrollFrame
+        
+        local UICorner = Instance.new("UICorner")
+        UICorner.CornerRadius = UDim.new(0, 6)
+        UICorner.Parent = button
+        
+        local stroke = Instance.new("UIStroke")
+        stroke.Color = THEME.BORDER
+        stroke.Thickness = 1
+        stroke.Transparency = 0.5
+        stroke.Parent = button
+        
+        button.MouseButton1Click:Connect(function()
+            excludedPlayers[player] = not excludedPlayers[player]
+            
+            if excludedPlayers[player] then
+                TweenService:Create(button, TweenInfo.new(0.3), {
+                    BackgroundColor3 = Color3.fromRGB(180, 40, 40),
+                    TextColor3 = Color3.fromRGB(255, 200, 200)
+                }):Play()
+            else
+                TweenService:Create(button, TweenInfo.new(0.3), {
+                    BackgroundColor3 = THEME.SECONDARY,
+                    TextColor3 = THEME.TEXT_PRIMARY
+                }):Play()
+            end
+        end)
+
+        button.MouseEnter:Connect(function()
+            TweenService:Create(button, TweenInfo.new(0.3), {
+                BackgroundTransparency = 0.1
+            }):Play()
+        end)
+
+        button.MouseLeave:Connect(function()
+            TweenService:Create(button, TweenInfo.new(0.3), {
+                BackgroundTransparency = 0.3
+            }):Play()
+        end)
+        
+        return button
+    end
+    
+    -- Create buttons for existing players
+    for _, player in pairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer then
+            createPlayerButton(player)
+        end
+    end
+    
+    -- Handle new players joining
+    Players.PlayerAdded:Connect(function(player)
+        if player ~= LocalPlayer then
+            createPlayerButton(player)
+        end
+    end)
+    
+    -- Handle players leaving
+    Players.PlayerRemoving:Connect(function(player)
+        local button = scrollFrame:FindFirstChild(player.Name)
+        if button then button:Destroy() end
+        excludedPlayers[player] = nil
+    end)
+    
+    return container
+end
+
+-- Create player list
+local whichListButton = createButton("Player List", extraSection, 20)
+local playerListDropdown = createPlayerDropdown(extraSection, 65)
 
 whichListButton.MouseButton1Click:Connect(function()
     whichListEnabled = not whichListEnabled
@@ -537,135 +686,6 @@ whichListButton.MouseButton1Click:Connect(function()
         BackgroundColor3 = whichListEnabled and THEME.SUCCESS or THEME.SECONDARY
     }):Play()
     playerListDropdown.Visible = whichListEnabled
-end)
-
--- Aimbot Functions
-local function canSeeTarget(targetPart)
-    local origin = Camera.CFrame.Position
-    local direction = (targetPart.Position - origin).Unit
-    local raycastParams = RaycastParams.new()
-    raycastParams.FilterType = Enum.RaycastFilterType.Blacklist
-    raycastParams.FilterDescendantsInstances = {LocalPlayer.Character}
-    
-    local raycastResult = workspace:Raycast(origin, direction * 1000, raycastParams)
-    
-    if raycastResult then
-        local hit = raycastResult.Instance
-        local humanoid = hit.Parent:FindFirstChild("Humanoid") or hit.Parent.Parent:FindFirstChild("Humanoid")
-        if humanoid then
-            return humanoid.Parent == targetPart.Parent
-        end
-        return false
-    end
-    return true
-end
-
-local function getClosestPlayer()
-    local closestPlayer = nil
-    local shortestDistance = FOVSize
-    local mousePos = Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y/2)
-    
-    for _, player in pairs(Players:GetPlayers()) do
-        if player ~= LocalPlayer and not excludedPlayers[player] then
-            local character = player.Character
-            if character and character:FindFirstChild("Humanoid") and
-               character.Humanoid.Health > 0 then
-                
-                local targetPart = targetBody and 
-                    character:FindFirstChild("HumanoidRootPart") or
-                    character:FindFirstChild("Head")
-                
-                if targetPart then
-                    local screenPoint, onScreen = Camera:WorldToScreenPoint(targetPart.Position)
-                    
-                    if onScreen and screenPoint.Z > 0 then
-                        local screenPosition = Vector2.new(screenPoint.X, screenPoint.Y)
-                        local distanceFromMouse = (screenPosition - mousePos).Magnitude
-                        
-                        if distanceFromMouse < shortestDistance then
-                            if not wallCheckEnabled or canSeeTarget(targetPart) then
-                                closestPlayer = player
-                                shortestDistance = distanceFromMouse
-                            end
-                        end
-                    end
-                end
-            end
-        end
-    end
-    return closestPlayer
-end
-
--- Update ESP
-local function updateESP()
-    for _, player in pairs(Players:GetPlayers()) do
-        if player ~= LocalPlayer then
-            if player.Character and player.Character:FindFirstChild("Humanoid") then
-                if espEnabled and not excludedPlayers[player] then
-                    local hasESP = false
-                    if player.Character:FindFirstChild("Head") then
-                        hasESP = player.Character.Head:FindFirstChild("ESP_Name") ~= nil
-                    end
-                    
-                    if not hasESP then
-                        createChams(player.Character)
-                    end
-                else
-                    removeESP(player.Character)
-                end
-            end
-        end
-    end
-end
-
--- Player Events
-Players.PlayerAdded:Connect(function(player)
-    if player ~= LocalPlayer then
-        player.CharacterAdded:Connect(function(character)
-            wait(0.5)
-            if espEnabled and not excludedPlayers[player] then
-                createChams(character)
-            end
-        end)
-    end
-end)
-
-Players.PlayerRemoving:Connect(function(player)
-    if player.Character then
-        removeESP(player.Character)
-    end
-    excludedPlayers[player] = nil
-end)
-
--- RunService Updates
-RunService.RenderStepped:Connect(function()
-    FOVCircle.Position = Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y/2)
-    FOVCircle.Radius = FOVSize
-    
-    if espEnabled then
-        updateESP()
-    end
-    
-    if aimbotEnabled and UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton2) then
-        local target = getClosestPlayer()
-        if target then
-            local targetPart = targetBody and 
-                target.Character:FindFirstChild("HumanoidRootPart") or
-                target.Character:FindFirstChild("Head")
-            
-            if targetPart then
-                local targetPos = targetPart.Position
-                local targetVel = targetPart.Velocity
-                
-                local distance = (Camera.CFrame.Position - targetPos).Magnitude
-                local predictionMultiplier = 0.15 * (1 - (distance / 1000))
-                targetPos = targetPos + (targetVel * predictionMultiplier)
-                
-                local targetCFrame = CFrame.lookAt(Camera.CFrame.Position, targetPos)
-                Camera.CFrame = Camera.CFrame:Lerp(targetCFrame, smoothness)
-            end
-        end
-    end
 end)
 
 -- Make Frame Draggable
@@ -700,6 +720,40 @@ UserInputService.InputChanged:Connect(function(input)
     end
 end)
 
+-- Main RunService Loop
+RunService.RenderStepped:Connect(function()
+    -- Update FOV Circle position
+    local mouseLocation = UserInputService:GetMouseLocation()
+    FOVCircle.Position = mouseLocation
+    FOVCircle.Radius = FOVSize
+    FOVCircle.NumSides = 64
+    
+    if espEnabled then
+        updateESP()
+    end
+    
+    if aimbotEnabled and UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton2) then
+        local target = getClosestToCenter()
+        if target then
+            local targetPart = targetBody and 
+                target.Character:FindFirstChild("HumanoidRootPart") or
+                target.Character:FindFirstChild("Head")
+            
+            if targetPart then
+                local targetPos = targetPart.Position
+                local targetVel = targetPart.Velocity
+                
+                local distance = (Camera.CFrame.Position - targetPos).Magnitude
+                local predictionMultiplier = 0.15 * (1 - (distance / 1000))
+                targetPos = targetPos + (targetVel * predictionMultiplier)
+                
+                local targetCFrame = CFrame.lookAt(Camera.CFrame.Position, targetPos)
+                Camera.CFrame = Camera.CFrame:Lerp(targetCFrame, smoothness)
+            end
+        end
+    end
+end)
+
 -- GUI Toggle
 UserInputService.InputBegan:Connect(function(input)
     if input.KeyCode == Enum.KeyCode.Insert then
@@ -708,55 +762,10 @@ UserInputService.InputBegan:Connect(function(input)
     end
 end)
 
--- Initialize
-createNotification = function(text, duration)
-    local notif = Instance.new("Frame")
-    notif.Size = UDim2.new(0, 250, 0, 45)
-    notif.Position = UDim2.new(1, -270, 1, -60)
-    notif.BackgroundColor3 = THEME.SECONDARY
-    notif.BackgroundTransparency = 0.3
-    notif.Parent = gui
-    
-    local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, 8)
-    corner.Parent = notif
-    
-    local label = Instance.new("TextLabel")
-    label.Size = UDim2.new(1, -20, 1, 0)
-    label.Position = UDim2.new(0, 10, 0, 0)
-    label.BackgroundTransparency = 1
-    label.Text = text
-    label.TextColor3 = THEME.TEXT_PRIMARY
-    label.TextSize = 14
-    label.Font = Enum.Font.GothamBold
-    label.Parent = notif
-    
-    TweenService:Create(notif, TweenInfo.new(0.5, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-        Position = UDim2.new(1, -270, 1, -60)
-    }):Play()
-    
-    wait(duration)
-    
-    TweenService:Create(notif, TweenInfo.new(0.5, Enum.EasingStyle.Quart, Enum.EasingDirection.In), {
-        Position = UDim2.new(1, 0, 1, -60)
-    }):Play()
-    
-    wait(0.5)
-    notif:Destroy()
-end
-
--- Create initial notifications
-spawn(function()
-    createNotification("Combat Assistant Loaded", 3)
-    wait(3)
-    createNotification("Press INSERT to toggle GUI", 3)
-end)
-
--- Initialize ESP for existing players
-for _, player in pairs(Players:GetPlayers()) do
-    if player ~= LocalPlayer then
-        if player.Character and espEnabled then
-            createChams(player.Character)
-        end
+-- Clean up on script stop
+game:GetService("CoreGui").ChildRemoved:Connect(function(child)
+    if child == gui then
+        removeAllESP()
+        FOVCircle:Remove()
     end
-end
+end)
