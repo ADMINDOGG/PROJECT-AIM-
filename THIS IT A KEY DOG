@@ -1,18 +1,15 @@
--- สร้าง UI
 local ScreenGui = Instance.new("ScreenGui")
 local Frame = Instance.new("Frame")
 local TextBox = Instance.new("TextBox")
 local TextButton = Instance.new("TextButton")
 local InstructionsLabel = Instance.new("TextLabel")
 
--- Parent the UI
 ScreenGui.Parent = game.Players.LocalPlayer.PlayerGui
 Frame.Parent = ScreenGui
 TextBox.Parent = Frame 
 TextButton.Parent = Frame
 InstructionsLabel.Parent = Frame
 
--- ตั้งค่า UI
 Frame.Size = UDim2.new(0.4, 0, 0.3, 0)
 Frame.Position = UDim2.new(0.3, 0, 0.35, 0)
 Frame.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
@@ -34,44 +31,52 @@ InstructionsLabel.Text = "กรุณาใส่คีย์ของคุณ
 InstructionsLabel.TextColor3 = Color3.fromRGB(0, 0, 0)
 InstructionsLabel.TextSize = 14
 
--- คีย์ที่ถูกต้อง
 local correctKey = "FRasdlSDkmdwa124askdMDASDODAOPPNIDSAJZNDKA"
 
--- ฟังก์ชั่นเช็คว่าได้รับอนุญาตแล้วหรือยัง
-local function isAuthorized()
+local function preventOtherExecutions()
+    local mt = getrawmetatable(game)
+    local old = mt.__namecall
+    setreadonly(mt, false)
+    mt.__namecall = newcclosure(function(self, ...)
+        local args = {...}
+        local method = getnamecallmethod()
+        if method == "HttpGet" then
+            return old(self, ...)
+        end
+        return old(self, ...)
+    end)
+    setreadonly(mt, true)
+end
+
+local function isAuth()
     local success, content = pcall(function()
-        return readfile("authorized.txt")
+        return readfile("auth.txt")
     end)
     return success and content == "true"
 end
 
--- ฟังก์ชั่นบันทึกการอนุญาต
-local function saveAuthorization()
+local function saveAuth()
     pcall(function()
-        writefile("authorized.txt", "true")
+        writefile("auth.txt", "true")
     end)
 end
 
--- ฟังก์ชั่นโหลดสคริปต์
-local function loadScript()
+local function loadMainScript()
     loadstring(game:HttpGet("https://raw.githubusercontent.com/ADMINDOGG/PROJECT-AIM-/refs/heads/main/NEW%20DOG%20HUB%20THIS!"))()
 end
 
--- เช็คการอนุญาตตอนเริ่มต้น
-if isAuthorized() then
+if isAuth() then
+    preventOtherExecutions()
     ScreenGui:Destroy()
-    loadScript()
+    loadMainScript()
 else
-    -- จัดการเมื่อกดปุ่ม
     TextButton.MouseButton1Click:Connect(function()
-        local inputKey = TextBox.Text
-        if inputKey == correctKey then
-            -- บันทึกและโหลดสคริปต์
-            saveAuthorization()
+        if TextBox.Text == correctKey then
+            preventOtherExecutions()
+            saveAuth()
             ScreenGui:Destroy()
-            loadScript()
+            loadMainScript()
         else
-            -- คีย์ไม่ถูกต้อง
             game.Players.LocalPlayer:Kick("คีย์ไม่ถูกต้อง! กรุณาตรวจสอบคีย์ของคุณ")
         end
     end)
