@@ -20,7 +20,7 @@ Frame.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
 TextBox.Size = UDim2.new(0.8, 0, 0.2, 0)
 TextBox.Position = UDim2.new(0.1, 0, 0.1, 0)
 TextBox.Text = ""
-TextBox.PlaceholderText = "Enter key here"
+TextBox.PlaceholderText = "Enter key here (BUY IN DISCORD)"
 TextBox.BackgroundColor3 = Color3.fromRGB(240, 240, 240)
 
 TextButton.Size = UDim2.new(0.8, 0, 0.2, 0)
@@ -35,7 +35,7 @@ InstructionsLabel.TextColor3 = Color3.fromRGB(0, 0, 0)
 InstructionsLabel.TextSize = 14
 
 -- Correct key
-local correctKey = "NORA.EXE"
+local correctKey = "FRasdlSDkmdwa124askdMDASDODAOPPNIDSAJZNDKA"
 
 -- Script loading function
 local function loadScript()
@@ -54,6 +54,6 @@ TextButton.MouseButton1Click:Connect(function()
         loadScript()
     else
         -- Incorrect key, kick the player from the game
-        game.Players.LocalPlayer:Kick("Incorrect key! You have been kicked from the game.")
+        game.Players.LocalPlayer:Kick("Incorrect key! FAKE KEY>:(")
     end
 end)
