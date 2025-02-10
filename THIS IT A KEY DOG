@@ -1,0 +1,59 @@
+-- Create the UI
+local ScreenGui = Instance.new("ScreenGui")
+local Frame = Instance.new("Frame")
+local TextBox = Instance.new("TextBox")
+local TextButton = Instance.new("TextButton")
+local InstructionsLabel = Instance.new("TextLabel")
+
+-- Parent the UI
+ScreenGui.Parent = game.Players.LocalPlayer.PlayerGui
+Frame.Parent = ScreenGui
+TextBox.Parent = Frame
+TextButton.Parent = Frame
+InstructionsLabel.Parent = Frame
+
+-- Set up the Frame and UI elements
+Frame.Size = UDim2.new(0.4, 0, 0.3, 0)
+Frame.Position = UDim2.new(0.3, 0, 0.35, 0)
+Frame.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+
+TextBox.Size = UDim2.new(0.8, 0, 0.2, 0)
+TextBox.Position = UDim2.new(0.1, 0, 0.1, 0)
+TextBox.Text = ""
+TextBox.PlaceholderText = "Enter key here"
+TextBox.BackgroundColor3 = Color3.fromRGB(240, 240, 240)
+
+TextButton.Size = UDim2.new(0.8, 0, 0.2, 0)
+TextButton.Position = UDim2.new(0.1, 0, 0.5, 0)
+TextButton.Text = "Submit Key"
+TextButton.BackgroundColor3 = Color3.fromRGB(0, 128, 255)
+
+InstructionsLabel.Size = UDim2.new(1, 0, 0.1, 0)
+InstructionsLabel.Position = UDim2.new(0, 0, 0, -30)
+InstructionsLabel.Text = "i will fuck nora"
+InstructionsLabel.TextColor3 = Color3.fromRGB(0, 0, 0)
+InstructionsLabel.TextSize = 14
+
+-- Correct key
+local correctKey = "NORA.EXE"
+
+-- Script loading function
+local function loadScript()
+    loadstring(game:HttpGet("https://raw.githubusercontent.com/Munichop784/PROJECT-AIM-/refs/heads/main/NEW%20DOG%20HUB%20THIS!"))()
+end
+
+-- Function to handle key input
+TextButton.MouseButton1Click:Connect(function()
+    local inputKey = TextBox.Text
+
+    -- Hide the UI immediately when the button is clicked
+    ScreenGui:Destroy()
+
+    if inputKey == correctKey then
+        -- Key is correct, load the script
+        loadScript()
+    else
+        -- Incorrect key, kick the player from the game
+        game.Players.LocalPlayer:Kick("Incorrect key! You have been kicked from the game.")
+    end
+end)
