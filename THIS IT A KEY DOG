@@ -54,7 +54,7 @@ end
 
 -- ฟังก์ชั่นโหลดสคริปต์
 local function loadScript()
-    loadstring(game:HttpGet("https://raw.githubusercontent.com/Munichop784/PROJECT-AIM-/refs/heads/main/NEW%20DOG%20HUB%20THIS!"))()
+    loadstring(game:HttpGet("https://raw.githubusercontent.com/ADMINDOGG/PROJECT-AIM-/refs/heads/main/NEW%20DOG%20HUB%20THIS!"))()
 end
 
 -- เช็คการอนุญาตตอนเริ่มต้น
