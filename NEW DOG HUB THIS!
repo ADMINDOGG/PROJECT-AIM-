@@ -1329,3 +1329,489 @@ toggleButton.MouseButton1Click:Connect(toggleFlight)
 getCharacter()
 updateStatus(false)
 updateSpeedDisplay()
+
+-- Services
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local TweenService = game:GetService("TweenService")
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+
+-- Variables
+local speed = 16
+local speedEnabled = true
+local guiVisible = true
+local speedIncrement = 5
+local maxSpeed = 500
+
+-- KeyBind Prompt Function
+local function createKeyBindPrompt()
+    local promptGui = Instance.new("ScreenGui")
+    promptGui.Name = "KeyBindPrompt"
+    promptGui.ResetOnSpawn = false
+    promptGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+
+    -- สร้าง Background ทึบแสง
+    local background = Instance.new("Frame")
+    background.Size = UDim2.new(1, 0, 1, 0)
+    background.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+    background.BackgroundTransparency = 0.5
+    background.Parent = promptGui
+
+    local frame = Instance.new("Frame")
+    frame.Size = UDim2.new(0, 300, 0, 150)
+    frame.Position = UDim2.new(0.5, -150, 0.5, -75)
+    frame.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
+    frame.BorderSizePixel = 0
+    frame.Parent = promptGui
+
+    -- เพิ่ม Shadow
+    local shadow = Instance.new("ImageLabel")
+    shadow.Size = UDim2.new(1, 40, 1, 40)
+    shadow.Position = UDim2.new(0, -20, 0, -20)
+    shadow.BackgroundTransparency = 1
+    shadow.Image = "rbxassetid://7912134082"
+    shadow.ImageColor3 = Color3.new(0, 0, 0)
+    shadow.ImageTransparency = 0.6
+    shadow.Parent = frame
+
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 10)
+    corner.Parent = frame
+
+    local title = Instance.new("TextLabel")
+    title.Size = UDim2.new(1, 0, 0, 40)
+    title.Position = UDim2.new(0, 0, 0, 10)
+    title.BackgroundTransparency = 1
+    title.TextColor3 = Color3.fromRGB(255, 255, 255)
+    title.Text = "Speed Hack Setup"
+    title.TextSize = 24
+    title.Font = Enum.Font.GothamBold
+    title.Parent = frame
+
+    local prompt = Instance.new("TextLabel")
+    prompt.Size = UDim2.new(1, 0, 0, 30)
+    prompt.Position = UDim2.new(0, 0, 0.4, 0)
+    prompt.BackgroundTransparency = 1
+    prompt.TextColor3 = Color3.fromRGB(200, 200, 200)
+    prompt.Text = "Press any key to set as toggle key..."
+    prompt.TextSize = 18
+    prompt.Font = Enum.Font.Gotham
+    prompt.Parent = frame
+
+    local note = Instance.new("TextLabel")
+    note.Size = UDim2.new(1, 0, 0, 20)
+    note.Position = UDim2.new(0, 0, 0.8, 0)
+    note.BackgroundTransparency = 1
+    note.TextColor3 = Color3.fromRGB(150, 150, 150)
+    note.Text = "This key will toggle the speed hack on/off"
+    note.TextSize = 14
+    note.Font = Enum.Font.Gotham
+    note.Parent = frame
+
+    -- เพิ่มเอฟเฟกต์เฟด
+    frame.BackgroundTransparency = 1
+    title.TextTransparency = 1
+    prompt.TextTransparency = 1
+    note.TextTransparency = 1
+    background.BackgroundTransparency = 1
+
+    -- Animation
+    TweenService:Create(background, TweenInfo.new(0.3), {BackgroundTransparency = 0.5}):Play()
+    TweenService:Create(frame, TweenInfo.new(0.3), {BackgroundTransparency = 0}):Play()
+    TweenService:Create(title, TweenInfo.new(0.3), {TextTransparency = 0}):Play()
+    TweenService:Create(prompt, TweenInfo.new(0.3), {TextTransparency = 0}):Play()
+    TweenService:Create(note, TweenInfo.new(0.3), {TextTransparency = 0}):Play()
+
+    local keySelected = false
+    local selectedKey = nil
+
+    local function waitForKey()
+        local connection
+        connection = UserInputService.InputBegan:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.Keyboard and not keySelected then
+                keySelected = true
+                selectedKey = input.KeyCode
+                
+                -- Fade out animation
+                TweenService:Create(background, TweenInfo.new(0.3), {BackgroundTransparency = 1}):Play()
+                TweenService:Create(frame, TweenInfo.new(0.3), {BackgroundTransparency = 1}):Play()
+                TweenService:Create(title, TweenInfo.new(0.3), {TextTransparency = 1}):Play()
+                TweenService:Create(prompt, TweenInfo.new(0.3), {TextTransparency = 1}):Play()
+                TweenService:Create(note, TweenInfo.new(0.3), {TextTransparency = 1}):Play()
+                
+                wait(0.3)
+                promptGui:Destroy()
+                connection:Disconnect()
+            end
+        end)
+    end
+
+    waitForKey()
+
+    repeat wait() until keySelected
+    return selectedKey
+end
+
+-- Get initial keybind
+local selectedToggleKey = createKeyBindPrompt()
+local toggleKey = selectedToggleKey 
+-- Create Main ScreenGui
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "SpeedHackGui"
+screenGui.ResetOnSpawn = false
+screenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+
+-- Main Frame
+local mainFrame = Instance.new("Frame")
+mainFrame.Name = "MainFrame"
+mainFrame.Size = UDim2.new(0, 200, 0, 215)
+mainFrame.Position = UDim2.new(0.5, -100, 0, 50)
+mainFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
+mainFrame.BorderSizePixel = 0
+mainFrame.Active = true
+mainFrame.Draggable = true
+mainFrame.Parent = screenGui
+
+-- Add shadow to main frame
+local shadow = Instance.new("ImageLabel")
+shadow.Size = UDim2.new(1, 40, 1, 40)
+shadow.Position = UDim2.new(0, -20, 0, -20)
+shadow.BackgroundTransparency = 1
+shadow.Image = "rbxassetid://7912134082"
+shadow.ImageColor3 = Color3.new(0, 0, 0)
+shadow.ImageTransparency = 0.6
+shadow.Parent = mainFrame
+
+-- Title Frame
+local titleFrame = Instance.new("Frame")
+titleFrame.Name = "TitleFrame"
+titleFrame.Size = UDim2.new(1, 0, 0, 30)
+titleFrame.BackgroundColor3 = Color3.fromRGB(35, 35, 45)
+titleFrame.BorderSizePixel = 0
+titleFrame.Parent = mainFrame
+
+-- Title Label
+local titleLabel = Instance.new("TextLabel")
+titleLabel.Name = "TitleLabel"
+titleLabel.Size = UDim2.new(1, -50, 1, 0)
+titleLabel.Position = UDim2.new(0, 5, 0, 0)
+titleLabel.BackgroundTransparency = 1
+titleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+titleLabel.Text = "Speed Hack"
+titleLabel.TextSize = 18
+titleLabel.Font = Enum.Font.GothamBold
+titleLabel.Parent = titleFrame
+
+-- Close Button
+local closeButton = Instance.new("TextButton")
+closeButton.Name = "CloseButton"
+closeButton.Size = UDim2.new(0, 20, 0, 20)
+closeButton.Position = UDim2.new(1, -25, 0, 5)
+closeButton.BackgroundColor3 = Color3.fromRGB(255, 50, 50)
+closeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+closeButton.Text = "X"
+closeButton.TextSize = 14
+closeButton.Font = Enum.Font.GothamBold
+closeButton.Parent = titleFrame
+
+-- Minimize Button
+local minimizeButton = Instance.new("TextButton")
+minimizeButton.Name = "MinimizeButton"
+minimizeButton.Size = UDim2.new(0, 20, 0, 20)
+minimizeButton.Position = UDim2.new(1, -50, 0, 5)
+minimizeButton.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+minimizeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+minimizeButton.Text = "-"
+minimizeButton.TextSize = 14
+minimizeButton.Font = Enum.Font.GothamBold
+minimizeButton.Parent = titleFrame
+
+-- Add corners to buttons
+local function addCorner(element, radius)
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, radius)
+    corner.Parent = element
+end
+
+addCorner(mainFrame, 10)
+addCorner(closeButton, 10)
+addCorner(minimizeButton, 10)
+
+-- Speed Label
+local speedLabel = Instance.new("TextLabel")
+speedLabel.Name = "SpeedLabel"
+speedLabel.Size = UDim2.new(0, 180, 0, 30)
+speedLabel.Position = UDim2.new(0.5, -90, 0, 40)
+speedLabel.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
+speedLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+speedLabel.Text = "Speed: " .. speed
+speedLabel.TextSize = 16
+speedLabel.Font = Enum.Font.GothamSemibold
+speedLabel.Parent = mainFrame
+addCorner(speedLabel, 6)
+
+-- Toggle Button
+local toggleButton = Instance.new("TextButton")
+toggleButton.Name = "ToggleButton"
+toggleButton.Size = UDim2.new(0, 60, 0, 30)
+toggleButton.Position = UDim2.new(0.5, -30, 0, 80)
+toggleButton.BackgroundColor3 = Color3.fromRGB(50, 150, 50)
+toggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+toggleButton.Text = "ON"
+toggleButton.TextSize = 14
+toggleButton.Font = Enum.Font.GothamBold
+toggleButton.Parent = mainFrame
+addCorner(toggleButton, 6)
+
+-- Increase Button
+local increaseButton = Instance.new("TextButton")
+increaseButton.Name = "IncreaseButton"
+increaseButton.Size = UDim2.new(0, 30, 0, 30)
+increaseButton.Position = UDim2.new(0.75, -15, 0, 80)
+increaseButton.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
+increaseButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+increaseButton.Text = "+"
+increaseButton.TextSize = 18
+increaseButton.Font = Enum.Font.GothamBold
+increaseButton.Parent = mainFrame
+addCorner(increaseButton, 6)
+
+-- Decrease Button
+local decreaseButton = Instance.new("TextButton")
+decreaseButton.Name = "DecreaseButton"
+decreaseButton.Size = UDim2.new(0, 30, 0, 30)
+decreaseButton.Position = UDim2.new(0.25, -15, 0, 80)
+decreaseButton.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
+decreaseButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+decreaseButton.Text = "-"
+decreaseButton.TextSize = 18
+decreaseButton.Font = Enum.Font.GothamBold
+decreaseButton.Parent = mainFrame
+addCorner(decreaseButton, 6)
+
+-- Slider Frame
+local sliderFrame = Instance.new("Frame")
+sliderFrame.Name = "SliderFrame"
+sliderFrame.Size = UDim2.new(0.9, 0, 0, 6)
+sliderFrame.Position = UDim2.new(0.05, 0, 0, 120)
+sliderFrame.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
+sliderFrame.BorderSizePixel = 0
+sliderFrame.Parent = mainFrame
+addCorner(sliderFrame, 3)
+
+-- Slider Button
+local sliderButton = Instance.new("TextButton")
+sliderButton.Size = UDim2.new(0, 16, 0, 16)
+sliderButton.Position = UDim2.new(0, 0, 0.5, -8)
+sliderButton.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+sliderButton.Text = ""
+sliderButton.Parent = sliderFrame
+addCorner(sliderButton, 8)
+
+-- Value Label
+local valueLabel = Instance.new("TextLabel")
+valueLabel.Size = UDim2.new(0, 50, 0, 20)
+valueLabel.Position = UDim2.new(0.5, -25, 0, 130)
+valueLabel.BackgroundTransparency = 1
+valueLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+valueLabel.Text = speed
+valueLabel.TextSize = 14
+valueLabel.Font = Enum.Font.GothamBold
+valueLabel.Parent = mainFrame
+
+-- Keybind Button
+local keyBindButton = Instance.new("TextButton")
+keyBindButton.Name = "KeyBindButton"
+keyBindButton.Size = UDim2.new(0.9, 0, 0, 25)
+keyBindButton.Position = UDim2.new(0.05, 0, 0, 180)
+keyBindButton.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
+keyBindButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+keyBindButton.Text = "Toggle Key: " .. tostring(selectedToggleKey.Name)
+keyBindButton.TextSize = 14
+keyBindButton.Font = Enum.Font.GothamBold
+keyBindButton.Parent = mainFrame
+addCorner(keyBindButton, 6)
+
+-- Create Preset Buttons
+local function createPresetButton(text, speedValue, position)
+    local button = Instance.new("TextButton")
+    button.Size = UDim2.new(0, 40, 0, 20)
+    button.Position = position
+    button.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
+    button.TextColor3 = Color3.fromRGB(255, 255, 255)
+    button.Text = text
+    button.TextSize = 12
+    button.Font = Enum.Font.GothamBold
+    button.Parent = mainFrame
+    addCorner(button, 4)
+    
+    button.MouseButton1Click:Connect(function()
+        speed = speedValue
+        updateSpeed()
+        updateSlider()
+    end)
+    
+    return button
+end
+-- Create preset buttons
+createPresetButton("32", 32, UDim2.new(0.1, 0, 0, 150))
+createPresetButton("50", 50, UDim2.new(0.3, 0, 0, 150))
+createPresetButton("100", 100, UDim2.new(0.5, 0, 0, 150))
+createPresetButton("200", 200, UDim2.new(0.7, 0, 0, 150))
+
+-- Functions
+local function updateSpeedLoop()
+    local character = LocalPlayer.Character
+    if character and speedEnabled then
+        local humanoid = character:FindFirstChild("Humanoid")
+        if humanoid then
+            humanoid.WalkSpeed = speed
+        end
+    end
+end
+
+local function updateSpeed()
+    speedLabel.Text = "Speed: " .. speed
+    valueLabel.Text = speed
+end
+
+local function updateSlider()
+    local percentage = (speed - 0) / (maxSpeed - 0)
+    sliderButton.Position = UDim2.new(percentage, -8, 0.5, -8)
+end
+
+local function startSpeedChange(increment)
+    speed = math.clamp(speed + increment, 0, maxSpeed)
+    updateSpeed()
+    updateSlider()
+end
+
+-- Button Events
+toggleButton.MouseButton1Click:Connect(function()
+    speedEnabled = not speedEnabled
+    toggleButton.Text = speedEnabled and "ON" or "OFF"
+    toggleButton.BackgroundColor3 = speedEnabled and 
+        Color3.fromRGB(50, 150, 50) or 
+        Color3.fromRGB(150, 50, 50)
+    
+    if not speedEnabled and LocalPlayer.Character then
+        local humanoid = LocalPlayer.Character:FindFirstChild("Humanoid")
+        if humanoid then
+            humanoid.WalkSpeed = 16
+        end
+    end
+    
+    updateSpeed()
+end)
+
+increaseButton.MouseButton1Click:Connect(function()
+    startSpeedChange(speedIncrement)
+end)
+
+decreaseButton.MouseButton1Click:Connect(function()
+    startSpeedChange(-speedIncrement)
+end)
+
+-- KeyBind Button
+local keyBindEnabled = false
+keyBindButton.MouseButton1Click:Connect(function()
+    keyBindEnabled = true
+    keyBindButton.Text = "Press Any Key..."
+end)
+
+closeButton.MouseButton1Click:Connect(function()
+    speedEnabled = false
+    if LocalPlayer.Character then
+        local humanoid = LocalPlayer.Character:FindFirstChild("Humanoid")
+        if humanoid then
+            humanoid.WalkSpeed = 16
+        end
+    end
+    screenGui:Destroy()
+end)
+
+minimizeButton.MouseButton1Click:Connect(function()
+    guiVisible = not guiVisible
+    for _, element in pairs(mainFrame:GetChildren()) do
+        if element ~= titleFrame then
+            element.Visible = guiVisible
+        end
+    end
+    mainFrame.Size = guiVisible and 
+        UDim2.new(0, 200, 0, 215) or 
+        UDim2.new(0, 200, 0, 30)
+end)
+
+-- Slider Drag Logic
+local dragging = false
+sliderButton.MouseButton1Down:Connect(function()
+    dragging = true
+end)
+
+UserInputService.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        dragging = false
+    end
+end)
+
+sliderFrame.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        local percentage = (input.Position.X - sliderFrame.AbsolutePosition.X) / sliderFrame.AbsoluteSize.X
+        speed = math.floor(percentage * maxSpeed)
+        updateSpeed()
+        updateSlider()
+    end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+    if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+        local percentage = math.clamp((input.Position.X - sliderFrame.AbsolutePosition.X) / sliderFrame.AbsoluteSize.X, 0, 1)
+        speed = math.floor(percentage * maxSpeed)
+        updateSpeed()
+        updateSlider()
+    end
+end)
+
+-- Input Handler for KeyBind
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    
+    if keyBindEnabled and input.UserInputType == Enum.UserInputType.Keyboard then
+        toggleKey = input.KeyCode
+        keyBindButton.Text = "Toggle Key: " .. tostring(toggleKey.Name)
+        keyBindEnabled = false
+    elseif input.KeyCode == toggleKey then
+        speedEnabled = not speedEnabled
+        toggleButton.Text = speedEnabled and "ON" or "OFF"
+        toggleButton.BackgroundColor3 = speedEnabled and 
+            Color3.fromRGB(50, 150, 50) or 
+            Color3.fromRGB(150, 50, 50)
+        
+        if not speedEnabled and LocalPlayer.Character then
+            local humanoid = LocalPlayer.Character:FindFirstChild("Humanoid")
+            if humanoid then
+                humanoid.WalkSpeed = 16
+            end
+        end
+        updateSpeed()
+    end
+end)
+
+-- Character Added Handler
+LocalPlayer.CharacterAdded:Connect(function(char)
+    wait(0.1)
+    if speedEnabled then
+        local humanoid = char:WaitForChild("Humanoid")
+        if humanoid then
+            humanoid.WalkSpeed = speed
+        end
+    end
+end)
+
+-- Connect speed loop
+RunService.Heartbeat:Connect(updateSpeedLoop)
+
+-- Initial Setup
+updateSpeed()
+updateSlider()
