@@ -22,6 +22,7 @@ local smoothness = 0.2
 local espDistance = 1000
 local showESPBox = true
 local showOutline = true
+local predictionMultiplier = 0.15
 
 -- ESP Variables and Colors
 local highlightColor = Color3.fromRGB(255, 255, 255) -- Outline color
@@ -57,7 +58,7 @@ gui.Parent = game.CoreGui
 
 -- Create Main Frame
 local frame = Instance.new("Frame")
-frame.Size = UDim2.new(0, 850, 0, 220)
+frame.Size = UDim2.new(0, 850, 0, 260)
 frame.Position = UDim2.new(0.5, -425, 0.1, 0)
 frame.BackgroundColor3 = THEME.PRIMARY
 frame.BorderSizePixel = 0
@@ -115,6 +116,7 @@ local function createSection(name, position)
 
     return section
 end
+
 -- Create Slider Function
 local function createSlider(name, parent, yOffset, minValue, maxValue, defaultValue)
     local container = Instance.new("Frame")
@@ -197,13 +199,14 @@ local function createSlider(name, parent, yOffset, minValue, maxValue, defaultVa
                 FOVSize = value
             elseif name == "Smoothness" then
                 smoothness = value
+            elseif name == "Prediction" then
+                predictionMultiplier = value
             end
         end
     end)
 
     return container
 end
-
 -- Button Creation Function
 local function createButton(text, parent, yOffset)
     local button = Instance.new("TextButton")
@@ -242,6 +245,36 @@ local function createButton(text, parent, yOffset)
     
     return button
 end
+
+-- Create Main Sections
+local combatSection = createSection("Combat", UDim2.new(0.02, 0, 0.05, 0))
+local visualSection = createSection("Visual", UDim2.new(0.27, 0, 0.05, 0))
+local settingsSection = createSection("Settings", UDim2.new(0.52, 0, 0.05, 0))
+local extraSection = createSection("Extra", UDim2.new(0.77, 0, 0.05, 0))
+
+-- Create FOV Circle
+local FOVCircle = Drawing.new("Circle")
+FOVCircle.Thickness = 2
+FOVCircle.Color = THEME.ACCENT
+FOVCircle.Transparency = 0.7
+FOVCircle.Visible = false
+FOVCircle.Filled = false
+FOVCircle.NumSides = 64
+
+-- Create Buttons and Sliders
+local aimbotButton = createButton("Aimbot: OFF", combatSection, 20)
+local fovSlider = createSlider("FOV Size", combatSection, 65, 30, 800, FOVSize)
+local smoothSlider = createSlider("Smoothness", combatSection, 120, 0.01, 1, smoothness)
+local predictionSlider = createSlider("Prediction", combatSection, 175, 0, 2, predictionMultiplier)
+
+local espButton = createButton("ESP: OFF", visualSection, 20)
+local espBoxButton = createButton("Box ESP: ON", visualSection, 65)
+local outlineButton = createButton("Outline: ON", visualSection, 110)
+local espColorButton = createButton("Box Color: Red", visualSection, 155)
+local espOutlineColorButton = createButton("Outline Color: White", visualSection, 200)
+
+local wallCheckButton = createButton("Wall Check: OFF", settingsSection, 20)
+local targetPartButton = createButton("Target: Head", settingsSection, 65)
 -- ESP Functions
 local function createNameTag(player)
     local billboard = Instance.new("BillboardGui")
@@ -251,7 +284,6 @@ local function createNameTag(player)
     billboard.AlwaysOnTop = true
     billboard.MaxDistance = espDistance
 
-    -- Name Label
     local nameLabel = Instance.new("TextLabel")
     nameLabel.Size = UDim2.new(1, 0, 0.5, 0)
     nameLabel.Position = UDim2.new(0, 0, 0, 0)
@@ -304,7 +336,7 @@ local function createNameTag(player)
     if character then
         local humanoid = character:FindFirstChild("Humanoid")
         if humanoid then
-            updateHP() -- Initial update
+            updateHP()
             humanoid.HealthChanged:Connect(updateHP)
         end
     end
@@ -384,7 +416,6 @@ local function updateESP()
         end
     end
 end
-
 -- Aimbot Functions
 local function canSeeTarget(targetPart)
     local origin = Camera.CFrame.Position
@@ -408,7 +439,7 @@ end
 
 local function getClosestToCenter()
     local closestPlayer = nil
-    local shortestDistance = FOVSize -- Initialize with FOV size as maximum distance
+    local shortestDistance = FOVSize
     local mousePos = UserInputService:GetMouseLocation()
     
     for _, player in pairs(Players:GetPlayers()) do
@@ -443,34 +474,6 @@ local function getClosestToCenter()
     end
     return closestPlayer
 end
--- Create Main Sections
-local combatSection = createSection("Combat", UDim2.new(0.02, 0, 0.05, 0))
-local visualSection = createSection("Visual", UDim2.new(0.27, 0, 0.05, 0))
-local settingsSection = createSection("Settings", UDim2.new(0.52, 0, 0.05, 0))
-local extraSection = createSection("Extra", UDim2.new(0.77, 0, 0.05, 0))
-
--- Create FOV Circle
-local FOVCircle = Drawing.new("Circle")
-FOVCircle.Thickness = 2
-FOVCircle.Color = THEME.ACCENT
-FOVCircle.Transparency = 0.7
-FOVCircle.Visible = false
-FOVCircle.Filled = false
-FOVCircle.NumSides = 64
-
--- Create Buttons
-local aimbotButton = createButton("Aimbot: OFF", combatSection, 20)
-local espButton = createButton("ESP: OFF", visualSection, 20)
-local espBoxButton = createButton("Box ESP: ON", visualSection, 65)
-local outlineButton = createButton("Outline: ON", visualSection, 110)
-local espColorButton = createButton("Box Color: Red", visualSection, 155)
-local espOutlineColorButton = createButton("Outline Color: White", visualSection, 200)
-local wallCheckButton = createButton("Wall Check: OFF", settingsSection, 20)
-local targetPartButton = createButton("Target: Head", settingsSection, 65)
-
--- Create Sliders
-local fovSlider = createSlider("FOV Size", combatSection, 65, 30, 800, FOVSize)
-local smoothSlider = createSlider("Smoothness", combatSection, 110, 0.01, 1, smoothness)
 
 -- Button Handlers
 aimbotButton.MouseButton1Click:Connect(function()
@@ -574,7 +577,7 @@ targetPartButton.MouseButton1Click:Connect(function()
         BackgroundColor3 = targetBody and THEME.SUCCESS or THEME.SECONDARY
     }):Play()
 end)
--- Create Player List Function
+-- Player List Functions
 local function createPlayerDropdown(parent, yOffset)
     local container = Instance.new("Frame")
     container.Size = UDim2.new(0.9, 0, 0, 200)
@@ -652,21 +655,18 @@ local function createPlayerDropdown(parent, yOffset)
         return button
     end
     
-    -- Create buttons for existing players
     for _, player in pairs(Players:GetPlayers()) do
         if player ~= LocalPlayer then
             createPlayerButton(player)
         end
     end
     
-    -- Handle new players joining
     Players.PlayerAdded:Connect(function(player)
         if player ~= LocalPlayer then
             createPlayerButton(player)
         end
     end)
     
-    -- Handle players leaving
     Players.PlayerRemoving:Connect(function(player)
         local button = scrollFrame:FindFirstChild(player.Name)
         if button then button:Destroy() end
@@ -743,8 +743,6 @@ RunService.RenderStepped:Connect(function()
                 local targetPos = targetPart.Position
                 local targetVel = targetPart.Velocity
                 
-                local distance = (Camera.CFrame.Position - targetPos).Magnitude
-                local predictionMultiplier = 0.15 * (1 - (distance / 1000))
                 targetPos = targetPos + (targetVel * predictionMultiplier)
                 
                 local targetCFrame = CFrame.lookAt(Camera.CFrame.Position, targetPos)
@@ -934,7 +932,7 @@ updatePlayerList()
 
 
 
---------------------
+--------------------CHAT
 
 
 
@@ -1815,3 +1813,4 @@ RunService.Heartbeat:Connect(updateSpeedLoop)
 -- Initial Setup
 updateSpeed()
 updateSlider()
+
